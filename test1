@@ -1,0 +1,2 @@
+./bigtest.py --all-tests --rounds=10 --bits=104 --data-size=100 --rule-steps="[10,100]"
+
