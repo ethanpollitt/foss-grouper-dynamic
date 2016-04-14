@@ -96,7 +96,8 @@ int main(int argc, char* argv[])
                  * rules in bytes  */
                 uint64_t width = ceil_div(ceil(log2(pol.n)), 8);
                 uint8_t (*single_table)[width];
-                start_timing(&inner_time);
+                
+		start_timing(&inner_time);
                 single_table = (uint8_t (*)[width]) create_single_table(pol, width);
                 array2d_free(pol.q_masks);
                 array2d_free(pol.b_masks);
@@ -114,7 +115,7 @@ int main(int argc, char* argv[])
                 Trace("Took %ld microseconds to finish processing with single table\n",
                         real_process_time);
                 
-        }else{
+        } else {
                 /* Calculate heights and depths */
                 table_dims d = {
                         .even_s  = pol.b/t,
@@ -582,7 +583,15 @@ void copy_section(const uint8_t * src_array, uint8_t * dst_array,
 uint8_t * create_single_table(policy pol, uint64_t width)
 {
         uint64_t height = (uint64_t) exp2(pol.b);
-        uint8_t (*table)[width] = calloc(height, width);
+
+	// Calculate actual width (width + 10%)
+	uint64_t actualWidth = width + (width * .1);
+        uint64_t extraBits = actualWidth - width;
+	
+        uint8_t (*table)[width] = calloc(height, actualWidth);
+
+	/* TODO: need to fill the new table with 1s */
+	
         /* For each possible input bitarray*/
         for(union64 i = {.num = 0}; i.num < height; i.num++){
                 /* Check each rule to see which is the first match 
@@ -602,6 +611,14 @@ uint8_t * create_single_table(policy pol, uint64_t width)
                                  * is dependent on a little-endian integer
                                  * representation. A portable implementation
                                  * will need to do something more complicated */
+
+				/* TODO: we need to add the val of j to the appropriate
+				 * number so that the beginning of the array (highest
+				 * ID'd rules) are all 1's 
+				 * >>OR<< 
+				 * just set all the appropriate
+				 * bits in j to 1's */
+
                                 memcpy(table[i.num], j.arr, width);
                                 break;
                         }
@@ -609,6 +626,10 @@ uint8_t * create_single_table(policy pol, uint64_t width)
                          * match rules falls through without finding a match, it
                          * automatically matches rule 0, since the memory for
                          * the table was calloc'd  */
+
+			/* NOTE: the above should still hold since we have to check
+			 * each additional rule manually at least once -- if there is
+			 * no match to an "old" or new rule, the ID of 0 will be printed */
                 }
         }
         return (uint8_t*) table;
