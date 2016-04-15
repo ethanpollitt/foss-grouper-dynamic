@@ -21,4 +21,36 @@
 
 #pragma once
 
+#include "rbtree.h"
 
+rb_tree* CreateTree(uint32_t id, char *rule) {
+	rb_tree* newTree;
+	rb_node* head;
+
+	// TODO: Need to calculate q and b masks
+
+	newTree = (rb_tree*) malloc(sizeof(rb_tree));
+	if(!newTree) {
+		// Something went wrong!
+	}
+
+	head = (rb_node*) malloc(sizeof(rb_node));
+	head->id = id;
+	head->
+}
+
+void FreeTree(rb_tree *tree) {
+
+}
+
+void DeleteNode(rb_tree *tree, rb_node *node) {
+
+}
+
+void InsertNode(rb_tree *tree, uint32_t id, char *rule) {
+
+}
+
+rb_node* FindByKey(rb_tree *tree, uint32_t key) {
+
+}
