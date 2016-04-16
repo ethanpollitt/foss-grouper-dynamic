@@ -26,12 +26,12 @@ int main(int argc, char* argv[]) {
 	char rule[] = "10?001?0";
 	uint32_t id = 1;
 
-	printf("Creating tree...");
+	printf("Creating tree...\n");
 	fflush(stdout);
 
 	rb_tree* tree = CreateTree(id, rule);
 
-	printf("Tree created, exiting...");
+	printf("Tree created, exiting...\n");
 	fflush(stdout);
 
 	return 0;

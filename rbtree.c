@@ -23,44 +23,44 @@
 
 #include "rbtree.h"
 
-rb_tree* CreateTree(uint32_t id, char* rule) {
-	rb_tree* newTree;
-	rb_node* head;
+rb_tree CreateTree(uint32_t id, char* rule) {
+	rb_tree newTree;
+	rb_node head;
 
-	printf("Creating q_mask");
+	printf("Creating q_mask\n");
 	fflush(stdout);
 
 	// create q mask
 	uint8_t q_mask = ParseQMask(rule);
 
-	printf("Creating b_mask");
+	printf("Creating b_mask\n");
 	fflush(stdout);
 
 	// create b mask
 	uint8_t b_mask = ParseBMask(rule);
 
-	printf("Allocating memory for tree");
+	printf("Allocating memory for tree\n");
 	fflush(stdout);
 
 	newTree = (rb_tree*) malloc(sizeof(rb_tree));
 	if(!newTree) {
 		// Something went wrong!
-		printf("Could not malloc memory needed for tree structure!");
+		printf("Could not malloc memory needed for tree structure!\n");
 		fflush(stdout);
 		return NULL;
 	}
 
-	printf("Allocating memory for head node");
+	printf("Allocating memory for head node\n");
 	fflush(stdout);
 
 	head = (rb_node*) malloc(sizeof(rb_node));
 	if(!head) {
-		printf("Could not malloc memory needed for head node!");
+		printf("Could not malloc memory needed for head node!\n");
 		fflush(stdout);
 		return NULL;
 	}
 
-	printf("Setting node members");
+	printf("Setting node members\n");
 	fflush(stdout);
 
 	head->color = 0;	// root node is black
@@ -71,12 +71,12 @@ rb_tree* CreateTree(uint32_t id, char* rule) {
 	head->right = NULL;
 	head->parent = NULL;
 
-	printf("Setting tree head node");
+	printf("Setting tree head node\n");
 	fflush(stdout);
 
 	newTree->head = head;
 
-	printf("Done creating tree, returning");
+	printf("Done creating tree, returning\n");
 	fflush(stdout);
 
 	return newTree;
@@ -110,7 +110,7 @@ rb_node* FindByKey(rb_tree* tree, uint32_t key) {
 
 }
 
-uint8_t* ParseQMask(char* rule) {
+uint8_t ParseQMask(char* rule) {
 	uint8_t q_mask = 0;
 	for(int j = 0; j < strlen(rule); ++j) {	// ignore compiler warning, max size will be 12k
 		if (rule[j] == '?')
@@ -121,7 +121,7 @@ uint8_t* ParseQMask(char* rule) {
 	return q_mask;
 }
 
-uint8_t* ParseBMask(char* rule) {
+uint8_t ParseBMask(char* rule) {
 	uint8_t b_mask = 0;
 	for(int j = 0; j < strlen(rule); ++j) { // ignore compiler warning, max size will be 12k
 		if (rule[j] == '0' || rule[j]=='?')
