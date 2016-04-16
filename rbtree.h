@@ -30,18 +30,18 @@
 
 typedef struct {
 	uint32_t id;	// 64-bit ID, this is our key
-	int color;		// 0 is red, 1 is black
+	int color;		// 0 is black, 1 is red
 
 	uint8_t q_mask;
 	uint8_t b_mask;
 	
-	struct node *left;
-	struct node *right;
-	struct node *parent;
+	struct node* left;
+	struct node* right;
+	struct node* parent;
 } rb_node;
 
 typedef struct {
-	struct node *head;
+	struct node* head;
 } rb_tree;
 
 //==================================
@@ -49,8 +49,11 @@ typedef struct {
 //==================================
 
 // creates new tree with ID and rule as head node
-rb_tree* CreateTree(uint32_t id, char *rule);
-void FreeTree(rb_tree *tree);
-void DeleteNode(rb_tree *tree, rb_node *node);
-void InsertNode(rb_tree *tree, uint32_t id, char *rule);
-rb_node* FindByKey(rb_tree *tree, uint32_t key);
+rb_tree* CreateTree(uint32_t id, char* rule);
+void FreeTree(rb_tree* tree);
+void FreeSubTree(rb_node* node);
+void DeleteNode(rb_tree* tree, rb_node* node);
+void InsertNode(rb_tree* tree, uint32_t id, char* rule);
+rb_node* FindByKey(rb_tree* tree, uint32_t key);
+uint8_t* ParseQMask(char* rule);
+uint8_t* ParseBMask(char* rule);
