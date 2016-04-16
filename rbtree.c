@@ -23,9 +23,9 @@
 
 #include "rbtree.h"
 
-rb_tree CreateTree(uint32_t id, char* rule) {
-	rb_tree newTree;
-	rb_node head;
+rb_tree* CreateTree(uint32_t id, char* rule) {
+	rb_tree* newTree;
+	rb_node* head;
 
 	printf("Creating q_mask\n");
 	fflush(stdout);
@@ -43,7 +43,7 @@ rb_tree CreateTree(uint32_t id, char* rule) {
 	fflush(stdout);
 
 	newTree = (rb_tree*) malloc(sizeof(rb_tree));
-	if(!newTree) {
+	if(newTree == NULL) {
 		// Something went wrong!
 		printf("Could not malloc memory needed for tree structure!\n");
 		fflush(stdout);
@@ -54,7 +54,7 @@ rb_tree CreateTree(uint32_t id, char* rule) {
 	fflush(stdout);
 
 	head = (rb_node*) malloc(sizeof(rb_node));
-	if(!head) {
+	if(head == NULL) {
 		printf("Could not malloc memory needed for head node!\n");
 		fflush(stdout);
 		return NULL;

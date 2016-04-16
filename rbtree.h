@@ -51,7 +51,7 @@ typedef struct {
 //==================================
 
 // creates new tree with ID and rule as head node
-rb_tree CreateTree(uint32_t id, char* rule);
+rb_tree* CreateTree(uint32_t id, char* rule);
 void FreeTree(rb_tree* tree);
 void FreeSubTree(rb_node* node);
 void DeleteNode(rb_tree* tree, rb_node* node);

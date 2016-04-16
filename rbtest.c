@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
 	printf("Creating tree...\n");
 	fflush(stdout);
 
-	rb_tree* tree = CreateTree(id, rule);
+	rb_tree tree = CreateTree(id, rule);
 
 	printf("Tree created, exiting...\n");
 	fflush(stdout);
