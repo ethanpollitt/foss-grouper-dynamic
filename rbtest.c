@@ -24,6 +24,7 @@
 
 int main(int argc, char* argv[]) {
 	char rule[] = "10?001?0";
+	uint64_t width = 8;
 	uint32_t id = 1;
 
 	printf("Creating tree...\n");

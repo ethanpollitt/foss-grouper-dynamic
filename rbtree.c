@@ -23,7 +23,7 @@
 
 #include "rbtree.h"
 
-rb_tree* CreateTree(uint32_t id, char* rule) {
+rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width) {
 	rb_tree* newTree;
 	rb_node* head;
 
@@ -31,13 +31,13 @@ rb_tree* CreateTree(uint32_t id, char* rule) {
 	fflush(stdout);
 
 	// create q mask
-	uint8_t q_mask = ParseQMask(rule);
+	uint8_t* q_mask = ParseQMask(rule, width);
 
 	printf("Creating b_mask\n");
 	fflush(stdout);
 
 	// create b mask
-	uint8_t b_mask = ParseBMask(rule);
+	uint8_t* b_mask = ParseBMask(rule, width);
 
 	printf("Allocating memory for tree\n");
 	fflush(stdout);
@@ -110,8 +110,8 @@ rb_node* FindByKey(rb_tree* tree, uint32_t key) {
 
 }
 
-uint8_t ParseQMask(char* rule, uint64_t width) {
-	uint8_t q_mask[] = calloc(sizeof(uint8_t) * width);
+uint8_t* ParseQMask(char* rule, uint64_t width) {
+	uint8_t* q_mask = calloc(1, sizeof(uint8_t) * width);
 
 	printf("(qmask) before for loop\n");
 	fflush(stdout);
@@ -130,8 +130,8 @@ uint8_t ParseQMask(char* rule, uint64_t width) {
 	return q_mask;
 }
 
-uint8_t ParseBMask(char* rule, uint64_t width) {
-	uint8_t b_mask = calloc(sizeof(uint8_t) * width);;
+uint8_t* ParseBMask(char* rule, uint64_t width) {
+	uint8_t* b_mask = calloc(1, sizeof(uint8_t) * width);
 	for(int j = 0; j < strlen(rule); ++j) { // ignore compiler warning, max size will be 12k
 		if (rule[j] == '0' || rule[j]=='?')
 			BitFalse(b_mask[j],PackingIndex(j));

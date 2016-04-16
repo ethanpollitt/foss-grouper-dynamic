@@ -34,8 +34,8 @@ typedef struct {
 	uint32_t id;	// 64-bit ID, this is our key
 	int color;		// 0 is black, 1 is red
 
-	uint8_t q_mask;
-	uint8_t b_mask;
+	uint8_t* q_mask;
+	uint8_t* b_mask;
 	
 	struct node* left;
 	struct node* right;
@@ -57,8 +57,8 @@ void FreeSubTree(rb_node* node);
 void DeleteNode(rb_tree* tree, rb_node* node);
 void InsertNode(rb_tree* tree, uint32_t id, char* rule);
 rb_node* FindByKey(rb_tree* tree, uint32_t key);
-uint8_t ParseQMask(char* rule);
-uint8_t ParseBMask(char* rule);
+uint8_t* ParseQMask(char* rule);
+uint8_t* ParseBMask(char* rule);
 
 //==================================
 // Inline Functions
