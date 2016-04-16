@@ -110,32 +110,33 @@ rb_node* FindByKey(rb_tree* tree, uint32_t key) {
 
 }
 
-uint8_t ParseQMask(char* rule) {
-	uint8_t q_mask = 0;
+uint8_t ParseQMask(char* rule, uint64_t width) {
+	uint8_t q_mask[] = calloc(sizeof(uint8_t) * width);
 
 	printf("(qmask) before for loop\n");
 	fflush(stdout);
+
 	for(int j = 0; j < strlen(rule); ++j) {	// ignore compiler warning, max size will be 12k
 		if (rule[j] == '?') {
 			printf("(qmask) bit false\n");
 			fflush(stdout);
-			BitFalse(q_mask, PackingIndex(j));
+			BitFalse(q_mask[j], PackingIndex(j));
 		} else {
-			printf("(qmask) bit false\n");
+			printf("(qmask) bit true\n");
 			fflush(stdout);
-			BitTrue(q_mask, PackingIndex(j));
+			BitTrue(q_mask[j], PackingIndex(j));
 		}
 	}
 	return q_mask;
 }
 
-uint8_t ParseBMask(char* rule) {
-	uint8_t b_mask = 0;
+uint8_t ParseBMask(char* rule, uint64_t width) {
+	uint8_t b_mask = calloc(sizeof(uint8_t) * width);;
 	for(int j = 0; j < strlen(rule); ++j) { // ignore compiler warning, max size will be 12k
 		if (rule[j] == '0' || rule[j]=='?')
-			BitFalse(b_mask,PackingIndex(j));
+			BitFalse(b_mask[j],PackingIndex(j));
 		if (rule[j] == '1')
-			BitTrue(b_mask, PackingIndex(j));
+			BitTrue(b_mask[j], PackingIndex(j));
 	}
 	return b_mask;
 }
