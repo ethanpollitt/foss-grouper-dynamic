@@ -21,4 +21,87 @@
 
 #pragma once
 
+#include "rbtree.h"
 
+rb_tree* CreateTree(uint32_t id, char* rule) {
+	rb_tree* newTree;
+	rb_node* head;
+
+	// create q mask
+	unit8_t q_mask = ParseQMask(rule);
+
+	// create b mask
+	uint8_t b_mask = ParseBMask(rule);
+
+	newTree = (rb_tree*) malloc(sizeof(rb_tree));
+	if(!newTree) {
+		// Something went wrong!
+		fprintf(stdout, "Could not malloc memory needed for tree structure!");
+		return null;
+	}
+
+	head = (rb_node*) malloc(sizeof(rb_node));
+	if(!head) {
+		fprintf(stdout, "Could not malloc memory needed for head node!");
+		return null;
+	}
+	head->color = 0;	// root node is black
+	head->id = id;
+	head->q_mask = q_mask;
+	head->b_mask = b_mask;
+	head->left = NULL;
+	head->right = NULL;
+	head->parent = NULL;
+
+	newTree->head = head;
+}
+
+void FreeTree(rb_tree* tree) {
+	rb_node* head = tree->head;
+	FreeSubTree(head->left);
+	FreeSubTree(head->right);
+	free(head);
+	free(tree);
+}
+
+void FreeSubTree(rb_node* node) {
+	if(node->left)
+		FreeSubTree(node->left);
+	if(node->right)
+		FreeSubTree(node->right);
+	free(node);
+}
+
+void DeleteNode(rb_tree* tree, rb_node* node) {
+
+}
+
+void InsertNode(rb_tree* tree, uint32_t id, char* rule) {
+
+}
+
+rb_node* FindByKey(rb_tree* tree, uint32_t key) {
+
+}
+
+uint8_t* ParseQMask(char* rule) {
+	uint8_t q_mask = 0;
+	for(int j = 0; j < strlen(rule); ++j) {	// ignore compiler warning, max size will be 12k
+		if (rule[j] == '?')
+			BitFalse(q_mask, PackingIndex(j));
+		else
+			BitTrue(q_mask, PackingIndex(j));
+	}
+	return q_mask;
+}
+
+uint8_t* ParseBMask(char* rule) {
+	uint8_t b_mask = 0;
+	for(int j = 0; j < strlen(rule); ++j) { // ignore compiler warning, max size will be 12k
+		if (rule[j] == '0' || rule[j]=='?')
+			BitFalse(b_mask,PackingIndex(j));
+		if (rule[j] == '1')
+			BitTrue(b_mask, PackingIndex(j));
+	}
+	return b_mask;
+}

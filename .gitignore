@@ -2,3 +2,4 @@ grouper
 pol_gen
 *.swp
 *.geany
+.project
