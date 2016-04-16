@@ -112,11 +112,19 @@ rb_node* FindByKey(rb_tree* tree, uint32_t key) {
 
 uint8_t ParseQMask(char* rule) {
 	uint8_t q_mask = 0;
+
+	printf("(qmask) before for loop\n");
+	fflush(stdout);
 	for(int j = 0; j < strlen(rule); ++j) {	// ignore compiler warning, max size will be 12k
-		if (rule[j] == '?')
+		if (rule[j] == '?') {
+			printf("(qmask) bit false\n");
+			fflush(stdout);
 			BitFalse(q_mask, PackingIndex(j));
-		else
+		} else {
+			printf("(qmask) bit false\n");
+			fflush(stdout);
 			BitTrue(q_mask, PackingIndex(j));
+		}
 	}
 	return q_mask;
 }
