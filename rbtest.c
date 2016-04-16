@@ -19,11 +19,20 @@
  *  along with Grouper.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>		// adds uintXX_t support
 #include "rbtree.h"
 
 int main(int argc, char* argv[]) {
 	char rule[] = "10?001?0";
-	int id = "1";
-	rb_tree tree = CreateTree(id, rule);
+	uint32_t id = 1;
+
+	printf("Creating tree...");
+	fflush(stdout);
+
+	rb_tree* tree = CreateTree(id, rule);
+
+	printf("Tree created, exiting...");
+	fflush(stdout);
+
 	return 0;
 }
