@@ -51,14 +51,14 @@ typedef struct {
 //==================================
 
 // creates new tree with ID and rule as head node
-rb_tree* CreateTree(uint32_t id, char* rule);
+rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width);
 void FreeTree(rb_tree* tree);
 void FreeSubTree(rb_node* node);
 void DeleteNode(rb_tree* tree, rb_node* node);
 void InsertNode(rb_tree* tree, uint32_t id, char* rule);
 rb_node* FindByKey(rb_tree* tree, uint32_t key);
-uint8_t* ParseQMask(char* rule);
-uint8_t* ParseBMask(char* rule);
+uint8_t* ParseQMask(char* rule, uint64_t width);
+uint8_t* ParseBMask(char* rule, uint64_t width);
 
 //==================================
 // Inline Functions
