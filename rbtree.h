@@ -23,6 +23,7 @@
 
 #include <stdlib.h>             
 #include <stdint.h>	// adds uintXX_t support
+#include <stdio.h>  // standard io functions
 
 //==================================
 // Definitions

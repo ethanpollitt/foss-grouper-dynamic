@@ -28,7 +28,7 @@ rb_tree* CreateTree(uint32_t id, char* rule) {
 	rb_node* head;
 
 	// create q mask
-	unit8_t q_mask = ParseQMask(rule);
+	uint8_t q_mask = ParseQMask(rule);
 
 	// create b mask
 	uint8_t b_mask = ParseBMask(rule);
@@ -37,13 +37,13 @@ rb_tree* CreateTree(uint32_t id, char* rule) {
 	if(!newTree) {
 		// Something went wrong!
 		fprintf(stdout, "Could not malloc memory needed for tree structure!");
-		return null;
+		return NULL;
 	}
 
 	head = (rb_node*) malloc(sizeof(rb_node));
 	if(!head) {
 		fprintf(stdout, "Could not malloc memory needed for head node!");
-		return null;
+		return NULL;
 	}
 	head->color = 0;	// root node is black
 	head->id = id;
