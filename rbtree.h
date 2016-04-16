@@ -22,8 +22,9 @@
 #pragma once
 
 #include <stdlib.h>             
-#include <stdint.h>	// adds uintXX_t support
-#include <stdio.h>  // standard io functions
+#include <stdio.h>
+#include <stdint.h>		// adds uintXX_t support
+#include "xtrapbits.h"	// bit macros
 
 //==================================
 // Definitions
@@ -58,3 +59,12 @@ void InsertNode(rb_tree* tree, uint32_t id, char* rule);
 rb_node* FindByKey(rb_tree* tree, uint32_t key);
 uint8_t* ParseQMask(char* rule);
 uint8_t* ParseBMask(char* rule);
+
+//==================================
+// Inline Functions
+//==================================
+
+/* Return index in packing order (msb in byte first) */
+#define PackingIndex(bit) ((((bit)/BitsInByte)*BitsInByte)  \
+                          + (BitsInByte - 1 - (bit)%BitsInByte))
+
