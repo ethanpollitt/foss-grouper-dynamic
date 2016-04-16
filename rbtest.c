@@ -32,7 +32,21 @@ int main(int argc, char* argv[]) {
 
 	rb_tree* tree = CreateTree(id, rule, width);
 
-	printf("Tree created, exiting...\n");
+	printf("Tree created\n");
+	fflush(stdout);
+
+	char* q_mask_char = (char*) malloc(sizeof(char) * (width + 1));
+	// Print q_mask and b_mask as test
+	for(int i = 0; i < width; i++) {
+		q_mask_char[i] = (char) tree->head->q_mask[i];
+	}
+	q_mask_char[width] = '\0';
+
+	printf("\nq_mask: ");
+	fflush(stdout);
+	printf(q_mask_char);
+	fflush(stdout);
+	printf("\n");
 	fflush(stdout);
 
 	return 0;

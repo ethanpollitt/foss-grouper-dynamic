@@ -23,6 +23,7 @@
 
 #include <stdlib.h>             
 #include <stdio.h>
+#include <string.h>
 #include <stdint.h>		// adds uintXX_t support
 #include "xtrapbits.h"	// bit macros
 
@@ -30,20 +31,20 @@
 // Definitions
 //==================================
 
-typedef struct {
+typedef struct rb_node {
 	uint32_t id;	// 64-bit ID, this is our key
 	int color;		// 0 is black, 1 is red
 
 	uint8_t* q_mask;
 	uint8_t* b_mask;
 	
-	struct node* left;
-	struct node* right;
-	struct node* parent;
+	struct rb_node* left;
+	struct rb_node* right;
+	struct rb_node* parent;
 } rb_node;
 
-typedef struct {
-	struct node* head;
+typedef struct rb_node {
+	struct rb_node* head;
 } rb_tree;
 
 //==================================
