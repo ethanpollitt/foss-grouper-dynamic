@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdint.h>		// adds uintXX_t support
 #include "xtrapbits.h"	// bit macros
+#include "printing.h"	// print macros
 
 //==================================
 // Definitions
@@ -43,7 +44,7 @@ typedef struct rb_node {
 	struct rb_node* parent;
 } rb_node;
 
-typedef struct rb_node {
+typedef struct rb_tree {
 	struct rb_node* head;
 } rb_tree;
 
@@ -55,8 +56,9 @@ typedef struct rb_node {
 rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width);
 void FreeTree(rb_tree* tree);
 void FreeSubTree(rb_node* node);
-void DeleteNode(rb_tree* tree, rb_node* node);
-void InsertNode(rb_tree* tree, uint32_t id, char* rule);
+int DeleteNode(rb_tree* tree, rb_node* node);
+int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width);
+static void _BSTInsert(rb_tree* tree, rb_node* new_node);
 rb_node* FindByKey(rb_tree* tree, uint32_t key);
 uint8_t* ParseQMask(char* rule, uint64_t width);
 uint8_t* ParseBMask(char* rule, uint64_t width);

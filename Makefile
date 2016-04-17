@@ -19,13 +19,14 @@
 
 #CFLAGS = -std=gnu99 -pipe -combine
 CFLAGS = -std=gnu99 -pipe
+RBFLAGS = -std=gnu99
 DEBUG_CFLAGS = -ggdb3 -Wall -Wextra -DDEBUG
 RELEASE_CFLAGS = -O3
 FLLIBS = -lm -lpthread 
 NAME = grouper
 CC = gcc
 
-all: release debug pol_gen
+all: release debug pol_gen rbtest
 
 debug: $(NAME).debug
 $(NAME).debug: grouper.c grouper.h xtrapbits.h printing.c printing.h
@@ -40,6 +41,10 @@ $(NAME): $(NAME).c $(NAME).h xtrapbits.h printing.c printing.h
 pol_gen: pol_gen.c
 	@echo Making policy generator...
 	$(CC) $(CFLAGS) $(RELEASE_CFLAGS) $@.c -o $@
+	
+rbtest: rbtest.c rbtree.c rbtree.h
+	@echo Making red-black test...
+	$(CC) $(RBFLAGS) -o rbtest.out rbtest.c rbtree.c rbtree.h
 
 #utility targets
 clean:

@@ -4,3 +4,8 @@ pol_gen
 *.geany
 .project
 *.o
+.autotools
+.cproject
+.settings
+*.debug
+grouper.debug
