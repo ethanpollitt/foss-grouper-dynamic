@@ -9,3 +9,5 @@ pol_gen
 .settings
 *.debug
 grouper.debug
+*.txt
+out

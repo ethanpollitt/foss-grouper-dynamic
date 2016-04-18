@@ -27,11 +27,11 @@ int main(int argc, char* argv[]) {
 	uint64_t width = 8;
 	uint32_t id = 1;
 
-	Trace("Creating tree...\n");
+	printf("Creating tree...\n");
 
 	rb_tree* tree = CreateTree(id, rule, width);
 
-	Trace("Tree created\n");
+	printf("Tree created\n");
 
 	// Print q_mask as test
 	char* q_mask_char = (char*) malloc(sizeof(char) * (width + 1));
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
 		q_mask_char[i] = tree->head->q_mask[i] + '0';
 	}
 	q_mask_char[width] = '\0';
-	Trace("\nq_mask: %s\n", q_mask_char);
+	printf("\nq_mask: %s\n", q_mask_char);
 
 	// Print b_mask as test
 	char* b_mask_char = (char*) malloc(sizeof(char) * (width + 1));
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
 		b_mask_char[i] = tree->head->b_mask[i] + '0';
 	}
 	b_mask_char[width] = '\0';
-	Trace("\nb_mask: %s\n", b_mask_char);
+	printf("\nb_mask: %s\n", b_mask_char);
 
 	return 0;
 }

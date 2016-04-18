@@ -32,14 +32,14 @@ rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width) {
 	rb_node* head;
 
 	// create q mask
-	Trace("Creating q_mask\n");
+	printf("Creating q_mask\n");
 	uint8_t* q_mask = ParseQMask(rule, width);
 
 	// create b mask
-	Trace("Creating b_mask\n");
+	printf("Creating b_mask\n");
 	uint8_t* b_mask = ParseBMask(rule, width);
 
-	Trace("Allocating memory for tree\n");
+	printf("Allocating memory for tree\n");
 	newTree = (rb_tree*) malloc(sizeof(rb_tree));
 	if(newTree == NULL) {
 		// Something went wrong!
@@ -48,7 +48,7 @@ rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width) {
 		return NULL;
 	}
 
-	Trace("Allocating memory for head node\n");
+	printf("Allocating memory for head node\n");
 	head = (rb_node*) malloc(sizeof(rb_node));
 	if(head == NULL) {
 		printf("Could not malloc memory needed for head node!\n");
@@ -56,7 +56,7 @@ rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width) {
 		return NULL;
 	}
 
-	Trace("Setting node members\n");
+	printf("Setting node members\n");
 	head->color = 0;	// root node is black
 	head->id = id;
 	head->q_mask = q_mask;
@@ -65,10 +65,10 @@ rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width) {
 	head->right = NULL;
 	head->parent = NULL;
 
-	Trae("Setting tree head node\n");
+	printf("Setting tree head node\n");
 	newTree->head = head;
 
-	Trace("Done creating tree, returning\n");
+	printf("Done creating tree, returning\n");
 	return newTree;
 }
 

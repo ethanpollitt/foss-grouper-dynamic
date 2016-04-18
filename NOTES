@@ -1,3 +1,18 @@
 - No duplicate rules are allowed. This means we must be careful of what we are inserting/deleting. We will have to pay special attention to this when we modify big_test.py
 >> we must search the .pol file to make sure we aren't inserting any existing rules
 >> we must make sure to keep track of what rules we are inserting/deleting. We can't insert the same rule again without deleting it first
+- Using Red-Black trees to hold the new rules that are inserted
+>>  This structure has a worst- case insert time of O(log n), worst-case delete time of O(log n), and worst-case search time of O(log n)
+- Considered using a hash table
+>> a drawback is that you need all the memory for hash table structure up front
+>> also have to count for any collisions
+>> key would have been q_mask + b_mask
+>> use linked-list for a linked hash table
+- Also considered a heap
+>> this has higher worst-case performance and can be more easily unbalanced
+- A better implementation (for high number of rules) might be a 2-3-4 tree
+>> however this would have taken more time to implement
+>> has better memory overhead and conceptually simpler but more corner cases to account for
+- Could use a hybrid system of hash table if memory given allows for it, and a red-black tree if memory does not allow for it 
+>> tradeoff for performance/memory once again
+
