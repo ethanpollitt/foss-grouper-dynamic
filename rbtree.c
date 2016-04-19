@@ -121,7 +121,7 @@ int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width) {
 		return 0;
 	}
 
-	// Step 1: check if new_node->parent is red
+	// Case 2: check if new_node->parent is red
 	if(new_node->parent->color == 1) {
 		rb_node* parent = new_node->parent;
 
@@ -138,13 +138,33 @@ int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width) {
 			uncle = grand_parent->right;
 		else
 			uncle = grand_parent->left;
-
+		
 		if(uncle != NULL && uncle->color == 1) {
-			// Recolor parent, uncle, grandparent
+			// Case 3: Recolor parent, uncle, grandparent, then fix up
 			parent->color = 0;
 			uncle->color = 0;
 			grand_parent->color = 1;
+			
+			// TODO: Need to recolor the entire tree from bottom up?
+
+		} else { 
+			// Case 4: rotate and fix up using C5
+			if(parent->left = new_node) {
+				if(!RotateLeft(parent)) {
+					// TODO: error!
+					return 0;
+				}
+				new_node = new_node->left;
+			} else {
+				if(!RotateRight(parent)) {
+					// TODO: error!
+					return 0;
+				}
+				new_node = new_node->right;
+			}
 		}
+
+		// Case 5: 
 	}
 }
 

@@ -59,6 +59,8 @@ void FreeSubTree(rb_node* node);
 int DeleteNode(rb_tree* tree, rb_node* node);
 int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width);
 static int _BSTInsert(rb_tree* tree, rb_node* new_node);
+static int RotateLeft(rb_node* node);
+static int RotateRight(rb_node* node);
 rb_node* FindByKey(rb_tree* tree, uint32_t key);
 uint8_t* ParseQMask(char* rule, uint64_t width);
 uint8_t* ParseBMask(char* rule, uint64_t width);
