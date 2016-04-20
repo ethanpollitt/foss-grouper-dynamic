@@ -149,13 +149,13 @@ int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width) {
 
 		} else { 
 			// Case 4: rotate and fix up using C5
-			if(parent->left = new_node) {
+			if(parent->left == new_node && parent == grandParent->right) {
 				if(!RotateLeft(parent)) {
 					// TODO: error!
 					return 0;
 				}
 				new_node = new_node->left;
-			} else {
+			} else if(parent->right == new_node && parent == grandParent->left) {
 				if(!RotateRight(parent)) {
 					// TODO: error!
 					return 0;
