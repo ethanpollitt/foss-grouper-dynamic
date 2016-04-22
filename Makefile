@@ -26,7 +26,7 @@ FLLIBS = -lm -lpthread
 NAME = grouper
 CC = gcc
 
-all: release debug pol_gen rbtest
+all: clean release pol_gen rbtest
 
 debug: $(NAME).debug
 $(NAME).debug: grouper.c grouper.h xtrapbits.h printing.c printing.h
@@ -43,12 +43,17 @@ pol_gen: pol_gen.c
 	$(CC) $(CFLAGS) $(RELEASE_CFLAGS) $@.c -o $@
 	
 rbtest: rbtest.c rbtree.c rbtree.h
+	@echo Making redblack test...
+	$(CC) $(RBFLAGS) -o rbtest rbtest.c rbtree.c rbtree.h
+
+rbdebug: rbtest.c rbtree.c rbtree.h
 	@echo Making red-black test...
-	$(CC) $(RBFLAGS) -o rbtest.out rbtest.c rbtree.c rbtree.h
+	$(CC) $(RBFLAGS) -g -o rbtest.debug rbtest.c rbtree.c rbtree.h
+
 
 #utility targets
 clean:
-	@-rm *~ $(NAME) $(NAME).debug pol_gen 2> /dev/null
+	@-rm *~ $(NAME) *.debug pol_gen rbtest 2> /dev/null
 
 #This allows flymake mode to work with emacs 23
 .PHONY: check-syntax

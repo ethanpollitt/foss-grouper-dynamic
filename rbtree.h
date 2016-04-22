@@ -57,13 +57,19 @@ rb_tree* CreateTree(uint32_t id, char* rule, uint64_t width);
 void FreeTree(rb_tree* tree);
 void FreeSubTree(rb_node* node);
 int DeleteNode(rb_tree* tree, rb_node* node);
-int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width);
+rb_node* InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width);
 static int _BSTInsert(rb_tree* tree, rb_node* new_node);
-static int RotateLeft(rb_node* node);
-static int RotateRight(rb_node* node);
+static int _InsertCase1(rb_tree* tree, rb_node* node);
+static int _InsertCase2(rb_tree* tree, rb_node* node);
+static int _InsertCase3(rb_tree* tree, rb_node* node);
+static int _InsertCase4(rb_tree* tree, rb_node* node);
+static int _InsertCase5(rb_tree* tree, rb_node* node);
+static int _RotateLeft(rb_tree* tree, rb_node* node);
+static int _RotateRight(rb_tree* tree, rb_node* node);
 rb_node* FindByKey(rb_tree* tree, uint32_t key);
 uint8_t* ParseQMask(char* rule, uint64_t width);
 uint8_t* ParseBMask(char* rule, uint64_t width);
+void PrintDebug(char* message, rb_node* node);
 
 //==================================
 // Inline Functions

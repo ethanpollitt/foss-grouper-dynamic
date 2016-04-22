@@ -96,9 +96,9 @@ int DeleteNode(rb_tree* tree, rb_node* node) {
  * Inserts a new node into the tree. Call CreateTree before invoking this
  * function.
  */
-int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width) {
+rb_node* InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width) {
 	if(tree == NULL) {
-		printf("ERROR Please call CreateTree before trying to insert a node!");
+		printf("ERROR Please call CreateTree before trying to insert a node!\n");
 		fflush(stdout);
 		return 0;
 	}
@@ -114,64 +114,26 @@ int InsertNode(rb_tree* tree, uint32_t id, char* rule, uint64_t width) {
 
 	// do BST insert before fixing up tree
 	int success = _BSTInsert(tree, new_node);
-	if(!success || new_node->parent == NULL) {	// If new_node->parent = null, raise error
+	if(!success) {
 		// Something went wrong with BST insert!
-		printf("ERROR returned during BST insert!");
+		printf("ERROR returned during BST insert!\n");
 		fflush(stdout);
-		return 0;
+		return NULL;
 	}
 
-	// Case 2: check if new_node->parent is red
-	if(new_node->parent->color == 1) {
-		rb_node* parent = new_node->parent;
+	/*
+	 * Followed logical case breakdown as shown on the Red Black tree Wiki,
+	 * along with examples from many other sites.
+	 */
 
-		if(parent->parent == NULL) {	// No grandparent, therefore no uncle
-			// This is an error case, the base node should be black!
-			printf("ERROR no grandparent on red node!");
-			fflush(stdout);
-			return 0;
-		}
-
-		rb_node* grand_parent = parent->parent;
-		rb_node* uncle;
-		if(grand_parent->left == parent)
-			uncle = grand_parent->right;
-		else
-			uncle = grand_parent->left;
-		
-		if(uncle != NULL && uncle->color == 1) {
-			// Case 3: Recolor parent, uncle, grandparent, then fix up
-			parent->color = 0;
-			uncle->color = 0;
-			grand_parent->color = 1;
-			
-			// TODO: Need to recolor the entire tree from bottom up?
-
-		} else { 
-			// Case 4: rotate and fix up using C5
-			if(parent->left == new_node && parent == grand_parent->right) {
-				if(!RotateLeft(parent)) {
-					// TODO: error!
-					return 0;
-				}
-				new_node = new_node->left;
-			} else if(parent->right == new_node && parent == grand_parent->left) {
-				if(!RotateRight(parent)) {
-					// TODO: error!
-					return 0;
-				}
-				new_node = new_node->right;
-			}
-
-			// Case 5: Rotate parent
-			parent->color = 0;
-			grand_parent->color = 1;
-			if (parent->left == new_node)
-				RotateRight(grand_parent);
-			else
-				RotateLeft(grand_parent);
-		}
+	// Do recursive calls to fix up tree
+	if(!_InsertCase1(tree, new_node)) {
+		printf("ERROR returned by RB insert\n");
+		fflush(stdout);
+		return NULL;
 	}
+
+	return new_node;
 }
 
 /* !!LOCAL FUNCITON ONLY!!
@@ -182,7 +144,7 @@ static int _BSTInsert(rb_tree* tree, rb_node* new_node) {
 	int flag = 1;
 	while(flag) {
 		if(temp == NULL) {	// check for error cond
-			printf("ERROR while BST insert! (temp is NULL)");
+			printf("ERROR while BST insert! (temp is NULL)\n");
 			fflush(stdout);
 			return 0;
 		}
@@ -203,10 +165,158 @@ static int _BSTInsert(rb_tree* tree, rb_node* new_node) {
 			} else
 				temp = temp->right;
 		} else {	// ID's are equal !ERROR!
-			printf("ERROR while BST insert! (same ID inserted twice)");
+			printf("ERROR while BST insert! (same ID inserted twice)\n");
 			fflush(stdout);
 			return 0;
 		}
+	}
+	return 1;
+}
+
+static int _InsertCase1(rb_tree* tree, rb_node* node) {
+	if(node->parent == NULL) {
+		node->color = 0;
+		tree->head = node;
+	} else
+		return _InsertCase2(tree, node);
+	PrintDebug("Node parent is null, making head of tree! (Case 1 complete)", node);
+	return 1;
+}
+
+static int _InsertCase2(rb_tree* tree, rb_node* node) {
+	if(node->parent->color == 1)
+		return _InsertCase3(tree, node);
+	PrintDebug("Node parent is black, no violations (Case 2 complete)", node);
+	return 1;
+}
+
+static int _InsertCase3(rb_tree* tree, rb_node* node) {
+	rb_node* parent = node->parent;
+	rb_node* grand_parent = parent->parent;
+	rb_node* uncle = NULL;
+
+	// Get family members
+	if(grand_parent != NULL) {
+		if(grand_parent->left == parent) {
+			PrintDebug("Uncle is right tree", node);
+			uncle = grand_parent->right;
+		} else {
+			PrintDebug("Uncle is left tree", node);
+			uncle = grand_parent->left;
+		}
+
+		if(uncle == NULL || uncle->color == 0)
+			PrintDebug("Uncle is null or black (execute Case 4)", node);
+		else if(uncle->color == 1) {
+			// Case 3: Recolor parent, uncle, grandparent, then fix up
+			parent->color = 0;
+			uncle->color = 0;
+			grand_parent->color = 1;
+			PrintDebug("Uncle is red (execute Case 1 on grandparent)", node);
+			return _InsertCase1(tree, grand_parent);
+		}
+	}
+	return _InsertCase4(tree, node);
+}
+
+static int _InsertCase4(rb_tree* tree, rb_node* node) {
+	rb_node* parent = node->parent;
+	rb_node* grand_parent = parent->parent;
+
+	// Case 4: black uncle, rotate child & parent
+	if(parent->right == node && parent == grand_parent->left) {
+		PrintDebug("Node is right of parent, left of grandparent", node);
+		_RotateLeft(tree, parent);
+		node = node->left;
+	} else if(parent->left == node && parent == grand_parent->right) {
+		PrintDebug("Node is left of parent, right of grandparent", node);
+		_RotateRight(tree, parent);
+		node = node->right;
+	}
+	PrintDebug("Execute Case 5", node);
+	return _InsertCase5(tree, node);
+}
+
+static int _InsertCase5(rb_tree* tree, rb_node* node) {
+	rb_node* parent = node->parent;
+	rb_node* grand_parent = parent->parent;
+
+	// Case 5: Recolor and rotate parent & grandparent
+	parent->color = 0;
+	grand_parent->color = 1;
+	if (parent->left == node)
+		return _RotateRight(tree, grand_parent);
+	else
+		return _RotateLeft(tree, grand_parent);
+}
+
+static int _RotateRight(rb_tree* tree, rb_node* node) {
+	PrintDebug("Rotating right", node);
+
+	rb_node* parent=node->parent;
+	if(parent == NULL) {
+		// Case if node is head of tree
+		rb_node* old_left = node->left;
+		rb_node* old_left_right = node->left->right;
+		tree->head = old_left;
+		node->parent = old_left;
+		old_left->parent = NULL;
+		old_left->right = node;
+		if(old_left_right != NULL)
+			old_left_right->parent = node;
+		node->left = old_left_right;
+	} else {
+		rb_node* grand_parent = parent->parent;
+		if(grand_parent == NULL) {
+			// Case if parent of node head of tree
+			tree->head = node;
+			node->parent = NULL;
+		} else {
+			// Normal case
+			grand_parent->right=node;
+			node->parent = grand_parent;
+		}
+		rb_node* old_right = node->right;
+		node->right=parent;
+		parent->left=old_right;
+		parent->parent = node;
+		if(old_right != NULL)
+			old_right->parent = parent;
+	}
+	return 1;
+}
+
+static int _RotateLeft(rb_tree* tree, rb_node* node) {
+	PrintDebug("Rotating left", node);
+
+	rb_node* parent = node->parent;
+	if(parent == NULL) {
+		// Case if node is head of tree
+		rb_node* old_right = node->right;
+		rb_node* old_right_left = node->right->left;
+		tree->head = old_right;
+		node->parent = old_right;
+		old_right->parent = NULL;
+		old_right->left = node;
+		if(old_right_left != NULL)
+				old_right_left->parent = node;
+		node->right = old_right_left;
+	} else {
+		rb_node* grand_parent = parent->parent;
+		if(grand_parent == NULL) {
+			// parent is tree head
+			tree->head = node;
+			node->parent = NULL;
+		} else {
+			grand_parent->left=node;
+			node->parent = grand_parent;
+		}
+		rb_node* old_left = node->left;
+		node->left=parent;
+		parent->right=old_left;
+		parent->parent = node;
+		if(old_left != NULL)
+			old_left->parent = parent;
 	}
 	return 1;
 }
@@ -238,4 +348,20 @@ uint8_t* ParseBMask(char* rule, uint64_t width) {
 		}
 	}
 	return b_mask;
+}
+
+void PrintDebug(char* message, rb_node* node) {
+	uint32_t parent_id = 0;
+	if(node->parent != NULL)
+		parent_id = node->parent->id;
+
+	uint32_t left_id = 0;
+	if(node->left != NULL)
+		left_id = node->left->id;
+
+	uint32_t right_id = 0;
+	if(node->right != NULL)
+		right_id = node->right->id;
+
+	printf("DEBUG (id: %i c: %i l: %i r: %i pid: %i) >> %s\n", node->id, node->color, left_id, right_id, parent_id, message);
 }
