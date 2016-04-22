@@ -21,6 +21,8 @@ This file is part of Grouper.
 
 #include "grouper.h"
 
+int CURRENT_ID = 1;
+
 int main(int argc, char* argv[])
 {
         profile_t outer_time, inner_time;
@@ -90,6 +92,9 @@ int main(int argc, char* argv[])
         Trace( "%"PRIu64" tables needed for memory size of %"PRIu64
                 " bits.\n",t, memsize_bits);
 
+        // Allocate ID table
+        uint32_t* id_tab = (uint32_t*) malloc(sizeof(uint32_t) * pol.n);
+
         /* Handle the special single table case */
         if (t == 1){
                 /* Find the width of the binary representation of the number of
@@ -97,8 +102,8 @@ int main(int argc, char* argv[])
                 uint64_t width = ceil_div(ceil(log2(pol.n)), 8);
                 uint8_t (*single_table)[width];
                 
-		start_timing(&inner_time);
-                single_table = (uint8_t (*)[width]) create_single_table(pol, width);
+                start_timing(&inner_time);
+                single_table = (uint8_t (*)[width]) create_single_table(pol, width, id_tab);
                 array2d_free(pol.q_masks);
                 array2d_free(pol.b_masks);
                 build_time = end_timing(&inner_time);
@@ -108,7 +113,7 @@ int main(int argc, char* argv[])
                 start_timing(&inner_time);
                 cpu_process_time = clock();
                 /* Process packets with single table here */
-                read_input_and_classify_single(pol, width, single_table);
+                read_input_and_classify_single(pol, width, single_table, id_tab);
                 
                 real_process_time = end_timing(&inner_time);
                 cpu_process_time = clock() - cpu_process_time;
@@ -206,6 +211,8 @@ uint64_t min_tables(uint64_t m , uint64_t n , uint64_t b)
         if(m < 2 * N * b 
            || n < 1 || b < 1) return TABLE_ERROR;
 
+        uint64_t id_tab_bits = 8 * ceil_div((uint64_t) (N * sizeof(uint32_t)), 8);
+
         /* If the amount of memory available is larger than the amount
          * needed for a 1 table solution, return 1. 1 table is a special
          * case because it allows only using log2(n) bits to store the rules 
@@ -214,9 +221,13 @@ uint64_t min_tables(uint64_t m , uint64_t n , uint64_t b)
          * isn't going to happen (when we convert a double to a uint64_t), so on
          * the assumption that the log of the number of rules is 3 bytes or
          * less, we won't allow bitlengths greater than 58 to be considered for
-         * the one table solution. */
+         * the one table solution.
+         *
+         * EDIT: We have also added the amount of memory needed for the ID table
+         * into this equation.
+         */
         if(b <= 58 && 
-           m >= (8 * ceil_div((uint64_t)log2(n),8)) * (uint64_t)exp2(b) ) return 1;
+           m >= (8 * ceil_div((uint64_t)log2(n),8)) * (uint64_t)exp2(b) + id_tab_bits) return 1;
 
         /* Initial highest number of tables that might be needed */
         uint64_t high = ceil_div(b,2);
@@ -230,7 +241,7 @@ uint64_t min_tables(uint64_t m , uint64_t n , uint64_t b)
                 mid = (high + low)/2;
                 memNeededForMidTables = 
                         (mid - (b % mid))*exp2(b/mid) * N + 
-                        (b%mid)*exp2((b/mid) + 1) * N;
+                        (b%mid)*exp2((b/mid) + 1) * N + id_tab_bits;
                 if(m < memNeededForMidTables){
                         low = mid;
                 }else{ 
@@ -580,37 +591,41 @@ void copy_section(const uint8_t * src_array, uint8_t * dst_array,
 } 
         
 /* Creates a single table for rule matching */
-uint8_t * create_single_table(policy pol, uint64_t width)
+uint8_t * create_single_table(policy pol, uint64_t width, uint32_t* id_tab)
 {
-        uint64_t height = (uint64_t) exp2(pol.b);
+    uint64_t height = (uint64_t) exp2(pol.b);
 
 	// Calculate actual width (width + 10%)
-	uint64_t actualWidth = width + (width * .1);
-        uint64_t extraBits = actualWidth - width;
+//	uint64_t actualWidth = width + (width * .1);
+//    uint64_t extraBits = actualWidth - width;
 	
-        uint8_t (*table)[width] = calloc(height, actualWidth);
+//    uint8_t (*table)[width] = calloc(height, actualWidth);
 
-	/* TODO: need to fill the new table with 1s */
+    uint8_t (*table)[width] = calloc(height, width);
+
+	/* TODO: need to fill the new table with 1's */
 	
-        /* For each possible input bitarray*/
-        for(union64 i = {.num = 0}; i.num < height; i.num++){
-                /* Check each rule to see which is the first match 
-                 * j starts at 1, since rule 0 means "no match" */
-                for(union64 j = {.num = 1}; j.num <= pol.n; j.num++){
-                        /* Mask and compare with the current i */
-                        if((i.num & (uint64_t)pol.q_masks[j.num - 1]) 
-                           != (uint64_t)pol.b_masks[j.num - 1]){
-                                Trace("Input %"PRIu64" (",i.num);
-                                for(uint64_t k = pol.B/8; k != 0; k--){
-                                        printbits(i.arr[k-1]);
-                                        Trace(" ");
-                                }
-                                Trace(") matches rule %"PRIu64"\n", j.num);
-                                /* Set the table row equal to the rule number
-                                 * that matched. Note that this way of doing it
-                                 * is dependent on a little-endian integer
-                                 * representation. A portable implementation
-                                 * will need to do something more complicated */
+	/* For each possible input bitarray*/
+	for(union64 i = {.num = 0}; i.num < height; i.num++){
+
+		/* Check each rule to see which is the first match
+		 * j starts at 1, since rule 0 means "no match" */
+		for(union64 j = {.num = 1}; j.num <= pol.n; j.num++){
+
+			/* Mask and compare with the current i */
+			if((i.num & (uint64_t)pol.q_masks[j.num - 1]) != (uint64_t)pol.b_masks[j.num - 1]){
+				Trace("Input %"PRIu64" (",i.num);
+				for(uint64_t k = pol.B/8; k != 0; k--){
+						printbits(i.arr[k-1]);
+						Trace(" ");
+				}
+				Trace(") matches rule %"PRIu64"\n", j.num);
+
+				/* Set the table row equal to the rule number
+				 * that matched. Note that this way of doing it
+				 * is dependent on a little-endian integer
+				 * representation. A portable implementation
+				 * will need to do something more complicated */
 
 				/* TODO: we need to add the val of j to the appropriate
 				 * number so that the beginning of the array (highest
@@ -619,26 +634,25 @@ uint8_t * create_single_table(policy pol, uint64_t width)
 				 * just set all the appropriate
 				 * bits in j to 1's */
 
-                                memcpy(table[i.num], j.arr, width);
-                                break;
-                        }
-                        /* A convenient property here is that if the loop to
-                         * match rules falls through without finding a match, it
-                         * automatically matches rule 0, since the memory for
-                         * the table was calloc'd  */
+				memcpy(table[i.num], j.arr, width);
+				break;
+			}
+			/* A convenient property here is that if the loop to
+			 * match rules falls through without finding a match, it
+			 * automatically matches rule 0, since the memory for
+			 * the table was calloc'd  */
 
 			/* NOTE: the above should still hold since we have to check
 			 * each additional rule manually at least once -- if there is
 			 * no match to an "old" or new rule, the ID of 0 will be printed */
-                }
-        }
-        return (uint8_t*) table;
+		}
+	}
+	return (uint8_t*) table;
 }
 
 /* Classify packets with a single table */
-void read_input_and_classify_single(policy pol, 
-                                    uint64_t width, 
-                                    uint8_t (*table)[width])
+void read_input_and_classify_single(policy pol, uint64_t width,
+                                    uint8_t (*table)[width], uint32_t* id_tab)
 {
         uint64_t packets_read = 0;
         union64 inpacket = {.num = 0}; /* Current input temp */

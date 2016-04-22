@@ -132,11 +132,12 @@ void copy_section(const uint8_t *src_array, uint8_t *dst_array, uint64_t startbi
                   uint64_t size);
 
 /* Creates a single table for rule matching */
-uint8_t * create_single_table(policy pol,uint64_t width);
+uint8_t * create_single_table(policy pol,uint64_t width, uint32_t* id_tab);
 
 /* Classify packets with a single table */
 void read_input_and_classify_single(policy pol, uint64_t width,
-                                    uint8_t (*table)[width]);
+                                    uint8_t (*table)[width], uint32_t* id_tab);
+
 /* Filters incoming packets and classifies them to stdout */
 void read_input_and_classify(policy pol, table_dims dim, 
                              uint8_t even_tables[dim.even_h][dim.even_d][dim.bytewidth], 
