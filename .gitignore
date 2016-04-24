@@ -11,3 +11,5 @@ pol_gen
 grouper.debug
 *.txt
 out
+*.pol
+*.bin

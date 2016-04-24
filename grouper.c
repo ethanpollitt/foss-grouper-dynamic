@@ -21,7 +21,7 @@ This file is part of Grouper.
 
 #include "grouper.h"
 
-int CURRENT_ID = 1;
+uint32_t CURRENT_ID = 1;
 
 int main(int argc, char* argv[])
 {
@@ -73,11 +73,19 @@ int main(int argc, char* argv[])
                 }
         }
         
+        // Allocate ID table
+        uint32_t* id_tab;
+
         start_timing(&inner_time);
         policy pol = read_policy(pol_file);
         fclose(pol_file);
         read_time = end_timing(&inner_time);
         Trace("Took %ld microseconds to finish reading the input file.\n", read_time);
+
+        id_tab = (uint32_t*) malloc(sizeof(uint32_t) * pol.n);
+        for(uint64_t i = 0; i < pol.n; i++) {
+        	id_tab[i] = CURRENT_ID++;
+        }
 
         /* Calculate number of tables required.  */
         uint64_t t = min_tables(memsize_bits, pol.n , pol.b);
@@ -92,18 +100,20 @@ int main(int argc, char* argv[])
         Trace( "%"PRIu64" tables needed for memory size of %"PRIu64
                 " bits.\n",t, memsize_bits);
 
-        // Allocate ID table
-        uint32_t* id_tab = (uint32_t*) malloc(sizeof(uint32_t) * pol.n);
-
         /* Handle the special single table case */
         if (t == 1){
-                /* Find the width of the binary representation of the number of
+                /* OLD!!!!!  Find the width of the binary representation of the number of
                  * rules in bytes  */
-                uint64_t width = ceil_div(ceil(log2(pol.n)), 8);
+//                uint64_t width = ceil_div(ceil(log2(pol.n)), 8);
+
+        		// (DELETES + INSERTS)
+        		// Table should be as wide as there are number of rules
+        		// since we need to fill out the result of each rule
+        		uint64_t width = pol.N;
                 uint8_t (*single_table)[width];
                 
                 start_timing(&inner_time);
-                single_table = (uint8_t (*)[width]) create_single_table(pol, width, id_tab);
+                single_table = (uint8_t (*)[width]) create_single_table(pol, width);
                 array2d_free(pol.q_masks);
                 array2d_free(pol.b_masks);
                 build_time = end_timing(&inner_time);
@@ -113,7 +123,7 @@ int main(int argc, char* argv[])
                 start_timing(&inner_time);
                 cpu_process_time = clock();
                 /* Process packets with single table here */
-                read_input_and_classify_single(pol, width, single_table, id_tab);
+                read_input_and_classify_single(pol, width, single_table);
                 
                 real_process_time = end_timing(&inner_time);
                 cpu_process_time = clock() - cpu_process_time;
@@ -171,7 +181,7 @@ int main(int argc, char* argv[])
                 /* Read input and classify input until EOF */
                 start_timing(&inner_time);
                 cpu_process_time = clock();
-                read_input_and_classify(pol,d,even_tables,odd_tables);
+                read_input_and_classify(pol,d,even_tables,odd_tables, id_tab);
                 real_process_time = end_timing(&inner_time);
                 cpu_process_time = clock() - cpu_process_time;
                 Trace("Took (%ld cpu, %ld real) microseconds to finish processing "
@@ -183,6 +193,8 @@ int main(int argc, char* argv[])
                 
         }
         
+//        free(id_tab);
+
         total_time = end_timing(&outer_time);
         Trace("Took %ld microseconds total\n", total_time);
         /* We print the next line unconditionally for external tools to do
@@ -289,7 +301,6 @@ policy read_policy(FILE * file)
                 }
         }
 
-
         Trace( "%"PRIu64" rules parsed, with a max rule size of "
                "%"PRIu64" bits.\n", pol.n, pol.b);
         
@@ -302,10 +313,11 @@ policy read_policy(FILE * file)
         free(tmpstring);
 
         /* Read in the rest of the file */
+        int index = 0;
         for (uint64_t i = 0; i < pol.n; i++){
                 fgets(rule_array[i], pol.b + 2, file);
         }
-        
+
         /* We convert bits to bytes rounding up to the next byte */
         pol.B = 8 * ceil_div(pol.b, 8);
         pol.N = 8 * ceil_div(pol.n, 8);
@@ -329,31 +341,42 @@ policy read_policy(FILE * file)
 /* Parse the rule files into ? masks   */
 void parse_q_masks(uint64_t rule_count, char ** rule_array, uint8_t ** q_masks)
 {
-        /* Go through each character in the rules and set the corresponding bit
-         * in the q_mask array to 0 or 1  */
-        for(uint64_t i = 0; i < rule_count; ++i){
-                for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j){
-                        if (rule_array[i][j] == '?') 
-                                BitFalse(q_masks[i], PackingIndex(j)); 
-                        else 
-                                BitTrue(q_masks[i], PackingIndex(j));
-                }
-        }
+	/* Go through each character in the rules and set the corresponding bit
+	 * in the q_mask array to 0 or 1  */
+	for(uint64_t i = 0; i < rule_count; ++i){
+//		Trace("Rule %"PRIu64" q_mask is: ", i);
+		for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j){
+			if (rule_array[i][j] == '?') {
+				BitFalse(q_masks[i], PackingIndex(j));
+//				Trace("0");
+			} else {
+				BitTrue(q_masks[i], PackingIndex(j));
+//				Trace("1");
+			}
+		}
+//		Trace("\n");
+	}
 }
 
 /* Parse the rule files into bitmasks  */
 void parse_b_masks(uint64_t rule_count, char ** rule_array, uint8_t ** b_masks) 
 {
-        /* Go through each character in the rules and set the
-         * corresponding bit in the b_mask array to 0 or 1  */
-        for(uint64_t i = 0; i < rule_count; ++i){
-                for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j){
-                        if (rule_array[i][j] == '0' || rule_array[i][j]=='?'){ 
-                                BitFalse(b_masks[i],PackingIndex(j));}
-                        if (rule_array[i][j] == '1'){
-                                BitTrue(b_masks[i], PackingIndex(j));}
-                }
-        }
+	/* Go through each character in the rules and set the
+	 * corresponding bit in the b_mask array to 0 or 1  */
+	for(uint64_t i = 0; i < rule_count; ++i){
+//		Trace("Rule %"PRIu64" b_mask is: ", i);
+		for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j){
+			if (rule_array[i][j] == '0' || rule_array[i][j]=='?'){
+					BitFalse(b_masks[i],PackingIndex(j));
+//					Trace("0");
+			}
+			if (rule_array[i][j] == '1'){
+				BitTrue(b_masks[i], PackingIndex(j));
+//				Trace("1");
+			}
+		}
+//		Trace("\n");
+	}
 }
 
 
@@ -591,52 +614,57 @@ void copy_section(const uint8_t * src_array, uint8_t * dst_array,
 } 
         
 /* Creates a single table for rule matching */
-uint8_t * create_single_table(policy pol, uint64_t width, uint32_t* id_tab)
+uint8_t * create_single_table(policy pol, uint64_t width)
 {
     uint64_t height = (uint64_t) exp2(pol.b);
-
-	// Calculate actual width (width + 10%)
-//	uint64_t actualWidth = width + (width * .1);
-//    uint64_t extraBits = actualWidth - width;
-	
-//    uint8_t (*table)[width] = calloc(height, actualWidth);
-
     uint8_t (*table)[width] = calloc(height, width);
 
-	/* TODO: need to fill the new table with 1's */
-	
+    union64 tab_entry = {.num = 0};
+
 	/* For each possible input bitarray*/
-	for(union64 i = {.num = 0}; i.num < height; i.num++){
+	for(union64 i = {.num = 0}; i.num < height; i.num++) {
+		// Reset entry array
+		tab_entry.num = 0;
 
 		/* Check each rule to see which is the first match
 		 * j starts at 1, since rule 0 means "no match" */
-		for(union64 j = {.num = 1}; j.num <= pol.n; j.num++){
+		for(union64 j = {.num = 1}; j.num <= pol.n; j.num++) {
+			int match = 1;
+			for(uint64_t x = 0; x < width; x++) {
+				if((i.arr[x] & pol.q_masks[j.num - 1][x]) != pol.b_masks[j.num - 1][x]){
+					match = 0;
+					break;
+				}
+			}
+
+			if(!match)
+				continue;
+
+			Trace("Input %"PRIu64" (",i.num);
+			for(uint64_t k = pol.B/8; k != 0; k--){
+					printbits(i.arr[k-1]);
+					Trace(" ");
+			}
+			Trace(") matches rule %"PRIu64"\n", j.num);
 
 			/* Mask and compare with the current i */
-			if((i.num & (uint64_t)pol.q_masks[j.num - 1]) != (uint64_t)pol.b_masks[j.num - 1]){
-				Trace("Input %"PRIu64" (",i.num);
-				for(uint64_t k = pol.B/8; k != 0; k--){
-						printbits(i.arr[k-1]);
-						Trace(" ");
-				}
-				Trace(") matches rule %"PRIu64"\n", j.num);
+//			if((i & (uint64_t)pol.q_masks[j.num - 1]) == (uint64_t)pol.b_masks[j.num - 1]) {
+//				Trace("Input %"PRIu64" (",i);
+//				for(uint64_t k = pol.B/8; k != 0; k--){
+//						printbits(i.arr[k-1]);
+//						Trace(" ");
+//				}
+//				Trace(") matches rule %"PRIu64"\n", j.num);
 
-				/* Set the table row equal to the rule number
-				 * that matched. Note that this way of doing it
-				 * is dependent on a little-endian integer
-				 * representation. A portable implementation
-				 * will need to do something more complicated */
-
-				/* TODO: we need to add the val of j to the appropriate
+				/* TODO: (INSERT) we need to add the val of j to the appropriate
 				 * number so that the beginning of the array (highest
 				 * ID'd rules) are all 1's 
 				 * >>OR<< 
 				 * just set all the appropriate
 				 * bits in j to 1's */
 
-				memcpy(table[i.num], j.arr, width);
-				break;
-			}
+				BitTrue(tab_entry.arr, j.num - 1);
+//			}
 			/* A convenient property here is that if the loop to
 			 * match rules falls through without finding a match, it
 			 * automatically matches rule 0, since the memory for
@@ -646,33 +674,63 @@ uint8_t * create_single_table(policy pol, uint64_t width, uint32_t* id_tab)
 			 * each additional rule manually at least once -- if there is
 			 * no match to an "old" or new rule, the ID of 0 will be printed */
 		}
+//		Trace("Table entry %"PRIu64" is: ", i.num);
+//		for(uint64_t k = pol.B/8; k != 0; k--){
+//				printbits(tab_entry.arr[k-1]);
+//				Trace(" ");
+//		}
+//		Trace("\n");
+		memcpy(table[i.num], tab_entry.arr, width);\
 	}
 	return (uint8_t*) table;
 }
 
-/* Classify packets with a single table */
+///* Classify packets with a single table */
+//void read_input_and_classify_single(policy pol, uint64_t width,
+//                                    uint8_t (*table)[width], uint32_t* id_tab)
+//{
+//        uint64_t packets_read = 0;
+//        union64 inpacket = {.num = 0}; /* Current input temp */
+//        union64 rule_matched = {.num = 0}; /* It is important this is zeroed as
+//                                            * we will be copying into its least
+//                                            * significant bytes only, relying on
+//                                            * the most significant bytes to
+//                                            * remain zero.*/
+//        while(fread(inpacket.arr, sizeof(uint8_t), pol.pl, stdin) == pol.pl){
+//                memcpy(rule_matched.arr, table[inpacket.num], width);
+//                Print("%"PRIu64"\n", rule_matched.num);
+//                packets_read++;
+//        }
+//        Trace("Packets read in: %"PRIu64"\n", packets_read);
+//}
+
 void read_input_and_classify_single(policy pol, uint64_t width,
-                                    uint8_t (*table)[width], uint32_t* id_tab)
-{
-        uint64_t packets_read = 0;
-        union64 inpacket = {.num = 0}; /* Current input temp */
-        union64 rule_matched = {.num = 0}; /* It is important this is zeroed as
-                                            * we will be copying into its least
-                                            * significant bytes only, relying on
-                                            * the most significant bytes to
-                                            * remain zero.*/
-        while(fread(inpacket.arr, sizeof(uint8_t), pol.pl, stdin) == pol.pl){
-                memcpy(rule_matched.arr, table[inpacket.num], width);
-                Print("%"PRIu64"\n", rule_matched.num);
-                packets_read++;
-        }
-        Trace("Packets read in: %"PRIu64"\n", packets_read);
+									uint8_t (*table)[width]) {
+
+	uint64_t packets_read = 0;
+	union64 inpacket = {.num = 0}; /* Current input temp */
+	uint64_t tab_entry;
+
+	while(fread(inpacket.arr, sizeof(uint8_t), pol.pl, stdin) == pol.pl) {
+		bool match = false;
+		tab_entry = (uint64_t) table[inpacket.num];
+		for(uint64_t i = 0; i < pol.N; ++i){
+				if(BitValue(tab_entry, i) == true){
+						Trace("Packet %"PRIu64" ",packets_read);
+						Trace(" matched rule %"PRIu64"\n",i+1);
+						match = true;
+						break;
+				}
+		}
+		if (!match)
+				Print("0\n");
+	}
 }
 
 /* Filters incoming packets and classifies them to stdout */
 void read_input_and_classify(policy pol, table_dims dim, 
                      uint8_t even_tables[dim.even_h][dim.even_d][dim.bytewidth], 
-                     uint8_t odd_tables[dim.odd_h][dim.odd_d][dim.bytewidth])
+                     uint8_t odd_tables[dim.odd_h][dim.odd_d][dim.bytewidth], uint32_t* id_tab)
 {
         
         uint64_t packets_read = 0; 
@@ -728,14 +786,26 @@ void read_input_and_classify(policy pol, table_dims dim,
                         and_bitarray(&odd_tables[odd_index[i].num][i][0],
                                      bit_total, pol.N/8);
                 }
+
                 /* Loop through and determine the first bit that is set, if none
                  * is set, we say rule 0 is matched. */
                 bool match = false;
                 for(uint64_t i = 0; i < pol.N; ++i){
                         if(BitValue(bit_total,i) == true){
-                                Print("%"PRIu64"\n",i+1);
+                                /* TODO: Check the ID array to make sure the
+                                 * match is valid
+                                 */
+
+                        		if(id_tab[i] == 0) {
+                        			Print("Invalid rule found! (id_tab[%"PRIu64"])\n", i);
+                        			continue;
+                        		}
+
+                        		Print("Rule Matched: %"PRIu32"\n", id_tab[i]);
+//                            	Print("%"PRIu64"\n",i+1);
                                 //Trace("Packet %"PRIu64" ",packets_read);
                                 //Trace(" matched rule %"PRIu64"\n",i+1);
+
                                 match = true;
                                 break;
                         }
