@@ -741,8 +741,8 @@ void read_input_and_classify(policy pol, table_dims dim,
 	char *token, *saveptr;
 	size_t len = 0;
 	ssize_t read;
-	int pack_num_watch = 0;
-	int rule_to_delete = 0;
+	uint64_t pack_num_watch = 0;
+	uint32_t rule_to_delete = 0;
 	int no_more_deletes = FALSE;
 
 	// Open deletes file pointer
@@ -756,6 +756,7 @@ void read_input_and_classify(policy pol, table_dims dim,
 	while(fread(inpacket, sizeof(uint8_t), pol.pl, stdin) == pol.pl) {
 		packets_read++;
 
+		// Process rule deletes
 		int read_next = TRUE;
 		do {
 			if(pack_num_watch == 0) {
@@ -777,8 +778,13 @@ void read_input_and_classify(policy pol, table_dims dim,
 				}
 			}
 
-			if((uint64_t) pack_num_watch == packets_read) {
-				id_tab[rule_to_delete] = 0;
+			if(pack_num_watch == packets_read) {
+				for(uint64_t p = 0; p < pol.n; p++) {
+					if(id_tab[p] == rule_to_delete) {
+						id_tab[p] = 0;
+						break;
+					}
+				}
 
 				// Reset so we can read in next loop
 				pack_num_watch = 0;
