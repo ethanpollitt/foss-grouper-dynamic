@@ -277,7 +277,6 @@ policy read_policy(FILE * file)
         
         pol.pl = atoll(tmpstring);
 
-
         Trace("Packet length: %"PRIu64"\n", pol.pl);
 
 
@@ -313,7 +312,6 @@ policy read_policy(FILE * file)
         free(tmpstring);
 
         /* Read in the rest of the file */
-        int index = 0;
         for (uint64_t i = 0; i < pol.n; i++){
                 fgets(rule_array[i], pol.b + 2, file);
         }
@@ -629,10 +627,10 @@ uint8_t * create_single_table(policy pol, uint64_t width)
 		/* Check each rule to see which is the first match
 		 * j starts at 1, since rule 0 means "no match" */
 		for(union64 j = {.num = 1}; j.num <= pol.n; j.num++) {
-			int match = 1;
+			int match = TRUE;
 			for(uint64_t x = 0; x < width; x++) {
 				if((i.arr[x] & pol.q_masks[j.num - 1][x]) != pol.b_masks[j.num - 1][x]){
-					match = 0;
+					match = FALSE;
 					break;
 				}
 			}
@@ -733,93 +731,139 @@ void read_input_and_classify(policy pol, table_dims dim,
                      uint8_t odd_tables[dim.odd_h][dim.odd_d][dim.bytewidth], uint32_t* id_tab)
 {
         
-        uint64_t packets_read = 0; 
-        /* Place to store the current input */
-        uint8_t inpacket[pol.pl];
+	uint64_t packets_read = 0;
+	/* Place to store the current input */
+	uint8_t inpacket[pol.pl];
 
-        /* Read in bytewidth bytes and end if less than that is read in */
-        while(fread(inpacket, sizeof(uint8_t), pol.pl, stdin) == pol.pl){
-                packets_read++;
-                /* Create a temporary spot for reading in the inpacket */
-                union64 even_index[dim.even_d];
-                union64 odd_index[dim.odd_d];
-                /* Zero out index arrays */
-                memset(even_index, 0, dim.even_d * sizeof(union64));
-                memset(odd_index, 0, dim.odd_d * sizeof(union64));
-                
-                /* Copy in sections of inpacket to even_index array*/
-                for (uint64_t i = 0; i < dim.even_d; ++i){
-                        copy_section(inpacket,
-                                     even_index[i].arr, 
-                                     i*dim.even_s, dim.even_s);
-                }
-                
-                /* precompute bit offset of odd sections  */
-                uint64_t offset = dim.even_d * dim.even_s;
-                /* Copy in sections of inpacket to odd_index array*/
-                for (uint64_t i = 0; i < dim.odd_d; ++i){
-                        copy_section(inpacket,
-                                     odd_index[i].arr,
-                                     offset + i*dim.odd_s, dim.odd_s);
-                }
+	// Variable for delete processing
+	FILE *fp;
+	char *line = NULL;
+	char *token, *saveptr;
+	size_t len = 0;
+	ssize_t read;
+	int pack_num_watch = 0;
+	int rule_to_delete = 0;
+	int no_more_deletes = FALSE;
 
-                /* create a running total to decide which rule is satisfied */
-                uint8_t bit_total[pol.N/8];
-                /* Zero out bit_total */
-                memset(bit_total, 0, pol.N/8);
-                /* Copy the first bit array into the total Note that we must
-                 * have at least one even section, its the odd sections that may
-                 * not exist. So it is ok for the next for loop to start at 1
-                 * instead of 0 */
-                memcpy(bit_total, &even_tables[even_index[0].num][0][0], pol.N/8);
+	// Open deletes file pointer
+	fp = fopen("deletes.del", "r");
+	if (fp == NULL) {
+		Print("error: couldn't open delete file!\n");
+		exit(EXIT_FAILURE);
+	}
 
-                /* Loop through the remaining even bit arrays and AND them with
-                 * the total */
-                for(uint64_t i = 1; i < dim.even_d;++i){
-                        and_bitarray(&even_tables[even_index[i].num][i][0], 
-                                     bit_total, pol.N/8);
-                }
+	/* Read in bytewidth bytes and end if less than that is read in */
+	while(fread(inpacket, sizeof(uint8_t), pol.pl, stdin) == pol.pl) {
+		packets_read++;
 
-                 /* Loop through the remaining odd bit arrays and AND them with
-                 * the total */
-                for(uint64_t i = 0; i < dim.odd_d; ++i){
-                        and_bitarray(&odd_tables[odd_index[i].num][i][0],
-                                     bit_total, pol.N/8);
-                }
+		int read_next = TRUE;
+		do {
+			if(pack_num_watch == 0) {
+				if((read = getline(&line, &len, fp)) == -1) {
+					no_more_deletes = TRUE;
+					break;
+				}
+				token = strtok_r(line, "|", &saveptr);
+				pack_num_watch = atoi(token);
+				token = strtok_r(NULL, "|", &saveptr);
+				rule_to_delete = atoi(token);
+				saveptr = NULL;
+				token = NULL;
 
-                /* Loop through and determine the first bit that is set, if none
-                 * is set, we say rule 0 is matched. */
-                bool match = false;
-                for(uint64_t i = 0; i < pol.N; ++i){
-                        if(BitValue(bit_total,i) == true){
-                                /* TODO: Check the ID array to make sure the
-                                 * match is valid
-                                 */
+				if(pack_num_watch == 0) {
+					// Something went wrong!
+					Print("error: pack_num_watch = 0!");
+					exit(EXIT_FAILURE);
+				}
+			}
 
-                        		if(id_tab[i] == 0) {
-                        			Print("Invalid rule found! (id_tab[%"PRIu64"])\n", i);
-                        			continue;
-                        		}
+			if((uint64_t) pack_num_watch == packets_read) {
+				id_tab[rule_to_delete] = 0;
 
-                        		Print("Rule Matched: %"PRIu32"\n", id_tab[i]);
-//                            	Print("%"PRIu64"\n",i+1);
-                                //Trace("Packet %"PRIu64" ",packets_read);
-                                //Trace(" matched rule %"PRIu64"\n",i+1);
+				// Reset so we can read in next loop
+				pack_num_watch = 0;
+			} else {
+				read_next = 0;
+			}
+		} while(read_next && !no_more_deletes);
 
-                                match = true;
-                                break;
-                        }
-                }
-                if (!match) { 
-                        Print("0\n");
-                        //Trace("Packet %"PRIu64" ",packets_read);
-                        //Trace(" matched rule 0\n");
-                }
-        }
+		/* Create a temporary spot for reading in the inpacket */
+		union64 even_index[dim.even_d];
+		union64 odd_index[dim.odd_d];
+		/* Zero out index arrays */
+		memset(even_index, 0, dim.even_d * sizeof(union64));
+		memset(odd_index, 0, dim.odd_d * sizeof(union64));
 
-        Trace("Packets read in: %"PRIu64"\n", packets_read);
+		/* Copy in sections of inpacket to even_index array*/
+		for (uint64_t i = 0; i < dim.even_d; ++i){
+			copy_section(inpacket, even_index[i].arr,
+						 i*dim.even_s, dim.even_s);
+		}
+
+		/* precompute bit offset of odd sections  */
+		uint64_t offset = dim.even_d * dim.even_s;
+		/* Copy in sections of inpacket to odd_index array*/
+		for (uint64_t i = 0; i < dim.odd_d; ++i){
+			copy_section(inpacket, odd_index[i].arr,
+						 offset + i*dim.odd_s, dim.odd_s);
+		}
+
+		/* create a running total to decide which rule is satisfied */
+		uint8_t bit_total[pol.N/8];
+		/* Zero out bit_total */
+		memset(bit_total, 0, pol.N/8);
+		/* Copy the first bit array into the total Note that we must
+		 * have at least one even section, its the odd sections that may
+		 * not exist. So it is ok for the next for loop to start at 1
+		 * instead of 0 */
+		memcpy(bit_total, &even_tables[even_index[0].num][0][0], pol.N/8);
+
+		/* Loop through the remaining even bit arrays and AND them with
+		 * the total */
+		for(uint64_t i = 1; i < dim.even_d;++i){
+			and_bitarray(&even_tables[even_index[i].num][i][0],
+						 bit_total, pol.N/8);
+		}
+
+		 /* Loop through the remaining odd bit arrays and AND them with
+		 * the total */
+		for(uint64_t i = 0; i < dim.odd_d; ++i){
+			and_bitarray(&odd_tables[odd_index[i].num][i][0],
+						 bit_total, pol.N/8);
+		}
+
+		/* Loop through and determine the first bit that is set, if none
+		 * is set, we say rule 0 is matched. */
+		bool match = false;
+		for(uint64_t i = 0; i < pol.N; ++i){
+			if(BitValue(bit_total,i) == true){
+
+				/* Check the ID array to make sure the match is valid */
+				if(id_tab[i] == 0) {
+					Print("(%"PRIu64") Deleted rule found! (id_tab[%"PRIu64"])\n", packets_read, i);
+					continue;
+				}
+
+				Print("(%"PRIu64") matched: (id_tab[%"PRIu64"] = %"PRIu32")\n", packets_read, i, id_tab[i]);
+				//Print("%"PRIu64"\n",i+1);
+				//Trace("Packet %"PRIu64" ",packets_read);
+				//Trace(" matched rule %"PRIu64"\n",i+1);
+
+				match = true;
+				break;
+			}
+		}
+		if (!match) {
+			Print("(%"PRIu64") 0\n", packets_read);
+			//Trace("Packet %"PRIu64" ",packets_read);
+			//Trace(" matched rule 0\n");
+		}
+	}
+
+	Trace("Packets read in: %"PRIu64"\n", packets_read);
 
 }
+
 
 /* AND two bit arrays together, the second argument holds the results */
 static inline void and_bitarray(const uint8_t* new, uint8_t* total, uint64_t size)

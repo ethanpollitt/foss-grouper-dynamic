@@ -41,6 +41,8 @@ This file is part of Grouper.
 #define TABLE_ERROR 0 /* Defined for invalid return value of getMinNumberOfTables */
 #define SUCCESS 1
 #define FAILURE 0
+#define TRUE 1
+#define FALSE 0
 #define MIN_THREADS_PER_CORE 100 /* The minimum number of threads that should be
                                   * spawned per core  */
 #define min(A,B) (((A) < (B)) ? (A) : (B))
