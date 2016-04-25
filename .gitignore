@@ -1,5 +1,6 @@
 grouper
 pol_gen
+rbtest
 *.swp
 *.geany
 .project

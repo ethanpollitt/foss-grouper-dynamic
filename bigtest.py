@@ -30,6 +30,7 @@ import os
 import yaml
 import csv
 import time
+import random
 
 def GB(gb):
     """Defined to reduce errors in zeros"""
@@ -178,7 +179,35 @@ def min_tables(m, n, b):
             high = mid
     
     return high, table_mem(high,n,b)
-        
+
+"""
+ADDITION FOR FoSS
+
+Generates random rule deletions based on how many rules are in the original
+policy and how large the input size is.
+
+This method is added for rule delete support for Grouper
+"""
+def build_delete_input(rules, inputsize = 100):
+	filename = "deletes.del"
+	fout = open(filename, "w")
+	rules_deleted = []
+	next_inputsize = 0
+	for i in range(0, inputsize):
+		if i == next_inputsize:
+			# Do a random rule delete
+			rule_num = 0
+			rule_found = True
+			while not rule_found:
+				rule_num = random.randint(0, rules)
+				if rule_num in rules_deleted:
+					continue
+				rule_found = True
+			
+			rules_deleted.append(rule_num)
+			fout.write(inputsize + "|" + rule_num)
+			next_inputsize = next_inputsize + random.randint(0, 10)
+ 
 def multi_d_test(mem_steps, rule_steps, bit_steps, 
                  programname = './grouper',
                  data_size = 100,
@@ -259,6 +288,7 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                     print "\tBenchmarking '", runstring , "' ... "
                     timings = {}
                     if not dryrun:
+			build_delete_input(rules, inputsize)
                         runbench = Popen(runstring , stderr = STDOUT, stdout = PIPE,
                                          shell=True)
                         timings = eval(runbench.communicate()[0]) #expecting a dict
@@ -288,13 +318,17 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                     num_packets = data_size * 1000
                     pps = Decimal(num_packets) / cpu_process_secs
                     Kbps = Decimal(1500 * 8 * num_packets) / cpu_process_secs
+		    if "deletions" in timings:
+			    deletions = timings["deletions"]
+		    else:
+			    deletions = 0
                     
                     # append current run info to the benchmark file
                     writer.writerow([mem, rules, bits, q1(Kbps),
                                      q1(pps), q0001(build_secs),
                                      memory_used, tables, q0001(read_secs),
                                      q0001(total_secs), 'false', runstring,
-                                     q0001(cpu_process_secs), q0001(real_process_secs)])
+                                     q0001(cpu_process_secs), q0001(real_process_secs), deletions])
                     # add current run info to the memoizer
                     memoizer[key] = dict(kbps = q1(Kbps), pps = q1(pps), 
                                          build_time = q0001(build_secs), 
