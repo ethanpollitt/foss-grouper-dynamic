@@ -1,16 +1,20 @@
 grouper
 pol_gen
 rbtest
-*.swp
-*.geany
 .project
-*.o
 .autotools
 .cproject
 .settings
-*.debug
 grouper.debug
-*.txt
 out
+
+# File ranges
+*.out
+*.txt
 *.pol
 *.bin
+*.csv
+*.debug
+*.o
+*.geany
+*.swp

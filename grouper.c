@@ -22,6 +22,7 @@ This file is part of Grouper.
 #include "grouper.h"
 
 uint32_t CURRENT_ID = 1;
+uint64_t DELETES = 0;
 
 int main(int argc, char* argv[])
 {
@@ -32,7 +33,7 @@ int main(int argc, char* argv[])
         
         /* Check for the proper number of arguments. Print usage if wrong
          * number */
-        if (argc < 3){
+        if (argc < 3) {
                 Error( 
                         "Usage: %s <max memory> <policy file.pol> [<input file>]"
                         " [<output file>]\n", argv[0] );
@@ -45,16 +46,16 @@ int main(int argc, char* argv[])
         /* open the policy file*/
         FILE *pol_file = fopen(argv[2], "r");
         /* Exit if file fails to open */
-        if (pol_file == NULL){
+        if (pol_file == NULL) {
                 Error( "Invalid policy file: \'%s\' \n", argv[2]);
                 exit(EXIT_FAILURE);
         }
 
         /* Check for input file & ensure it can be opened. */
-        if(argc >= 4){
+        if(argc >= 4) {
                 FILE * in_temp = stdin;
                 stdin = fopen(argv[3], "r");
-                if(stdin == NULL){
+                if(stdin == NULL) {
                         Error("Input file '%s' is invalid or "
                                 "non-existent. Falling back to stdin.\n", 
                                 argv[3]);
@@ -63,10 +64,10 @@ int main(int argc, char* argv[])
         }
 
         /* Check for output file & ensure it can be opened. */
-        if(argc >= 5){
+        if(argc >= 5) {
                 FILE * out_temp = stdout;               
                 stdout = fopen(argv[4], "w");
-                if(stdout == NULL){
+                if(stdout == NULL) {
                         Error("Output file '%s' cannot be opened for "
                                 "writing. Falling back to stdout.\n", argv[4]);
                         stdout = out_temp;
@@ -90,7 +91,7 @@ int main(int argc, char* argv[])
         /* Calculate number of tables required.  */
         uint64_t t = min_tables(memsize_bits, pol.n , pol.b);
 
-        if (t == TABLE_ERROR){
+        if (t == TABLE_ERROR) {
                 Error("Error: not enough memory to build tables. "
                       "Needs at least %"PRIu64" bytes.\n",
                       ceil_div((2*pol.N*pol.b),8));
@@ -101,7 +102,7 @@ int main(int argc, char* argv[])
                 " bits.\n",t, memsize_bits);
 
         /* Handle the special single table case */
-        if (t == 1){
+        if (t == 1) {
                 /* OLD!!!!!  Find the width of the binary representation of the number of
                  * rules in bytes  */
 //                uint64_t width = ceil_div(ceil(log2(pol.n)), 8);
@@ -123,7 +124,7 @@ int main(int argc, char* argv[])
                 start_timing(&inner_time);
                 cpu_process_time = clock();
                 /* Process packets with single table here */
-                read_input_and_classify_single(pol, width, single_table);
+                read_input_and_classify_single(pol, width, single_table, id_tab);
                 
                 real_process_time = end_timing(&inner_time);
                 cpu_process_time = clock() - cpu_process_time;
@@ -152,7 +153,7 @@ int main(int argc, char* argv[])
                 uint8_t (*even_tables)[d.even_d][d.bytewidth] =
                         calloc(d.even_h * d.even_d, 
                                sizeof(uint8_t[d.bytewidth]));
-                if(even_tables == NULL){
+                if(even_tables == NULL) {
                         Error("Could not allocate memory for even tables!"
                               " errno = %d\n", errno);
                         exit(EXIT_FAILURE);
@@ -160,7 +161,7 @@ int main(int argc, char* argv[])
                 uint8_t (*odd_tables) [d.odd_d] [d.bytewidth] = 
                         calloc(d.odd_h  * d.odd_d, 
                                sizeof(uint8_t[d.bytewidth]));
-                if(odd_tables == NULL){
+                if(odd_tables == NULL) {
                         Error("Could not allocate memory for odd tables!"
                               " errno = %d\n", errno);
                         exit(EXIT_FAILURE);
@@ -200,8 +201,8 @@ int main(int argc, char* argv[])
         /* We print the next line unconditionally for external tools to do
          * record keeping */
         fprintf(stderr, "{ 'read' : %ld, 'build' : %ld, 'cpu_process' : %ld,"
-                " 'real_process' : %ld, 'total' : %ld }\n", read_time, build_time, 
-                cpu_process_time, real_process_time, total_time);
+                " 'real_process' : %ld, 'total' : %ld, 'deletes': %"PRIu64" }\n", read_time, build_time, 
+                cpu_process_time, real_process_time, total_time, DELETES);
 
         return EXIT_SUCCESS;
 }
@@ -254,7 +255,7 @@ uint64_t min_tables(uint64_t m , uint64_t n , uint64_t b)
                 memNeededForMidTables = 
                         (mid - (b % mid))*exp2(b/mid) * N + 
                         (b%mid)*exp2((b/mid) + 1) * N + id_tab_bits;
-                if(m < memNeededForMidTables){
+                if(m < memNeededForMidTables) {
                         low = mid;
                 }else{ 
                         high = mid;
@@ -282,15 +283,15 @@ policy read_policy(FILE * file)
 
         /* Scan the rest of the file, finding the number of lines and the max
          * line length (which will be the max relevant bits */
-        while(fscanf(file, "%c", &tmp) != EOF){
+        while(fscanf(file, "%c", &tmp) != EOF) {
                 /* Ensure 1,0,?,\n are the only characters in the file  */
-                if(tmp != '0' && tmp != '1' && tmp != '?' && tmp != '\n'){
+                if(tmp != '0' && tmp != '1' && tmp != '?' && tmp != '\n') {
                         Trace( "Invalid character \'%c\' in policy "
                                 "file. Aborting... \n", tmp);
                         exit(EXIT_FAILURE);
                 }
 
-                if(tmp == '\n'){
+                if(tmp == '\n') {
                         pol.n++;
                         if(curr_bits > pol.b) 
                                 pol.b = curr_bits;
@@ -312,7 +313,7 @@ policy read_policy(FILE * file)
         free(tmpstring);
 
         /* Read in the rest of the file */
-        for (uint64_t i = 0; i < pol.n; i++){
+        for (uint64_t i = 0; i < pol.n; i++) {
                 fgets(rule_array[i], pol.b + 2, file);
         }
 
@@ -341,18 +342,14 @@ void parse_q_masks(uint64_t rule_count, char ** rule_array, uint8_t ** q_masks)
 {
 	/* Go through each character in the rules and set the corresponding bit
 	 * in the q_mask array to 0 or 1  */
-	for(uint64_t i = 0; i < rule_count; ++i){
-//		Trace("Rule %"PRIu64" q_mask is: ", i);
-		for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j){
+	for(uint64_t i = 0; i < rule_count; ++i) {
+		for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j) {
 			if (rule_array[i][j] == '?') {
 				BitFalse(q_masks[i], PackingIndex(j));
-//				Trace("0");
 			} else {
 				BitTrue(q_masks[i], PackingIndex(j));
-//				Trace("1");
 			}
 		}
-//		Trace("\n");
 	}
 }
 
@@ -361,19 +358,15 @@ void parse_b_masks(uint64_t rule_count, char ** rule_array, uint8_t ** b_masks)
 {
 	/* Go through each character in the rules and set the
 	 * corresponding bit in the b_mask array to 0 or 1  */
-	for(uint64_t i = 0; i < rule_count; ++i){
-//		Trace("Rule %"PRIu64" b_mask is: ", i);
-		for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j){
-			if (rule_array[i][j] == '0' || rule_array[i][j]=='?'){
+	for(uint64_t i = 0; i < rule_count; ++i) {
+		for(uint64_t j = 0; rule_array[i][j] != '\n'; ++j) {
+			if (rule_array[i][j] == '0' || rule_array[i][j]=='?') {
 					BitFalse(b_masks[i],PackingIndex(j));
-//					Trace("0");
 			}
-			if (rule_array[i][j] == '1'){
+			if (rule_array[i][j] == '1') {
 				BitTrue(b_masks[i], PackingIndex(j));
-//				Trace("1");
 			}
 		}
-//		Trace("\n");
 	}
 }
 
@@ -426,11 +419,11 @@ void fill_tables(policy pol,
         uint64_t min_odd_thread = 0;
 
         /* Initialize the threads */
-        for (uint64_t i = 0; i < dims.even_d; ++i){
-                if(active_threads == max_threads){
+        for (uint64_t i = 0; i < dims.even_d; ++i) {
+                if(active_threads == max_threads) {
                         /* We've hit the maximum number of active threads so we
                          * need to join some before continuing */
-                        for(;min_even_thread<i; min_even_thread++, active_threads--){
+                        for(;min_even_thread<i; min_even_thread++, active_threads--) {
                                 pthread_join(even_threads[min_even_thread], NULL);
                         }
                 }
@@ -444,17 +437,17 @@ void fill_tables(policy pol,
                                (void *) &even_args[i]);
                 active_threads++;
         }
-        for (uint64_t i = 0; i < dims.odd_d; ++i){
-                if(active_threads == max_threads){
+        for (uint64_t i = 0; i < dims.odd_d; ++i) {
+                if(active_threads == max_threads) {
                         /* We've hit the maximum number of active threads so we
                          * need to join some before continuing */
                         /* First join any even threads */
                         for(; min_even_thread < dims.even_d;
-                            min_even_thread++, active_threads--){
+                            min_even_thread++, active_threads--) {
                                 pthread_join(even_threads[min_even_thread], NULL);
                         }
                         /* Then join any odd threads */
-                        for(;min_odd_thread<i;min_odd_thread++, active_threads--){
+                        for(;min_odd_thread<i;min_odd_thread++, active_threads--) {
                                 pthread_join(odd_threads[min_odd_thread], NULL);
                         }
                 }
@@ -470,11 +463,11 @@ void fill_tables(policy pol,
                 active_threads++;
         }
         /* join all remaining even threads */
-        for(uint64_t i = min_even_thread; i < dims.even_d; i++, active_threads--){
+        for(uint64_t i = min_even_thread; i < dims.even_d; i++, active_threads--) {
                 pthread_join(even_threads[i], NULL);
         }
         /* join all remaining odd threads */
-        for(uint64_t i = min_odd_thread; i < dims.odd_d; i++, active_threads--){
+        for(uint64_t i = min_odd_thread; i < dims.odd_d; i++, active_threads--) {
                 pthread_join(odd_threads[i], NULL);
         }
         
@@ -499,7 +492,7 @@ void * fill_even_table(void * args)
         /* This next loop iterates to pol.n instead of dims.bitwidth
          * because there are only n rules in pol.q_masks and
          * pol.b_masks*/
-        for(uint64_t w = 0; w < pol->n; ++w){
+        for(uint64_t w = 0; w < pol->n; ++w) {
                 /* Create a temporary array to copy the relevant q_mask
                  * bits into */
                 uint8_t q_temp[e_array_Bwidth];
@@ -523,7 +516,7 @@ void * fill_even_table(void * args)
                         /* Set the appropriate bit in the lookup table
                          * to 1 or 0 depending on whether the rule
                          * matches */
-                        if(rule_matches(e_array_Bwidth,num_temp,q_temp,b_temp)){
+                        if(rule_matches(e_array_Bwidth,num_temp,q_temp,b_temp)) {
                                 BitTrue(&((*even_tables)[h.num][d][0]), w);
                         }
                 }
@@ -549,7 +542,7 @@ void * fill_odd_table(void * args)
         /* Offset to get to the beginning of the odd sections of the b and q
          * masks */
         uint64_t offset = dims->even_d * dims->even_s;
-        for(uint64_t w = 0; w < pol->n; ++w){
+        for(uint64_t w = 0; w < pol->n; ++w) {
                 /* Create a temporary array to copy the relevant q_mask
                  * bits into */
                 uint8_t q_temp[o_array_Bwidth];
@@ -565,7 +558,7 @@ void * fill_odd_table(void * args)
                 /* Copy the relevant bits into the temp array */
                 copy_section(pol->b_masks[w], b_temp, 
                              offset + d*dims->odd_s, dims->odd_s);
-                for(union64 h = {.num = 0}; h.num < dims->odd_h; ++h.num){
+                for(union64 h = {.num = 0}; h.num < dims->odd_h; ++h.num) {
                         uint8_t num_temp[o_array_Bwidth];
                         memset(num_temp, 0, o_array_Bwidth);
                         /* Copy even_s bits of the number into the
@@ -575,7 +568,7 @@ void * fill_odd_table(void * args)
                         /* Set the appropriate bit in the lookup table
                          * to 1 or 0 depending on whether the rule
                          * matches */
-                        if(rule_matches(o_array_Bwidth,num_temp,q_temp,b_temp)){
+                        if(rule_matches(o_array_Bwidth,num_temp,q_temp,b_temp)) {
                                 BitTrue(&((*odd_tables)[h.num][d][0]), w);
                         }
                 }
@@ -590,8 +583,8 @@ bool rule_matches( uint64_t size, uint8_t input[size], const uint8_t q_mask[size
                   const uint8_t b_mask[size])
 {
         /* test for equality a byte at a time */
-        for (uint64_t i = 0; i < size; ++i){
-                if((input[i] & q_mask[i]) != b_mask[i]){
+        for (uint64_t i = 0; i < size; ++i) {
+                if((input[i] & q_mask[i]) != b_mask[i]) {
                         return false;
                 }
         }
@@ -602,8 +595,8 @@ bool rule_matches( uint64_t size, uint8_t input[size], const uint8_t q_mask[size
 void copy_section(const uint8_t * src_array, uint8_t * dst_array, 
                   uint64_t startbit, uint64_t size)
 {
-        for (uint64_t i = startbit; i < startbit + size; i++){
-                if(BitIsTrue(src_array, i)){
+        for (uint64_t i = startbit; i < startbit + size; i++) {
+                if(BitIsTrue(src_array, i)) {
                         BitTrue(dst_array, i - startbit);
                 }else{
                         BitFalse(dst_array, i - startbit);
@@ -612,113 +605,145 @@ void copy_section(const uint8_t * src_array, uint8_t * dst_array,
 } 
         
 /* Creates a single table for rule matching */
-uint8_t * create_single_table(policy pol, uint64_t width)
-{
+uint8_t * create_single_table(policy pol, uint64_t width) {
     uint64_t height = (uint64_t) exp2(pol.b);
     uint8_t (*table)[width] = calloc(height, width);
 
-    union64 tab_entry = {.num = 0};
 
 	/* For each possible input bitarray*/
 	for(union64 i = {.num = 0}; i.num < height; i.num++) {
 		// Reset entry array
-		tab_entry.num = 0;
+	    union64 tab_entry = {.num = 0};
 
 		/* Check each rule to see which is the first match
 		 * j starts at 1, since rule 0 means "no match" */
 		for(union64 j = {.num = 1}; j.num <= pol.n; j.num++) {
-			int match = TRUE;
-			for(uint64_t x = 0; x < width; x++) {
-				if((i.arr[x] & pol.q_masks[j.num - 1][x]) != pol.b_masks[j.num - 1][x]){
-					match = FALSE;
-					break;
-				}
-			}
+			// Create byte array of input
+			int byte_width = width/8;
+            uint8_t num_temp[byte_width];
+            memset(num_temp, 0, byte_width * sizeof(uint8_t));
+            memcpy(num_temp, i.arr, byte_width);
 
-			if(!match)
-				continue;
-
-			Trace("Input %"PRIu64" (",i.num);
-			for(uint64_t k = pol.B/8; k != 0; k--){
-					printbits(i.arr[k-1]);
-					Trace(" ");
-			}
-			Trace(") matches rule %"PRIu64"\n", j.num);
-
-			/* Mask and compare with the current i */
-//			if((i & (uint64_t)pol.q_masks[j.num - 1]) == (uint64_t)pol.b_masks[j.num - 1]) {
-//				Trace("Input %"PRIu64" (",i);
-//				for(uint64_t k = pol.B/8; k != 0; k--){
-//						printbits(i.arr[k-1]);
-//						Trace(" ");
-//				}
-//				Trace(") matches rule %"PRIu64"\n", j.num);
-
-				/* TODO: (INSERT) we need to add the val of j to the appropriate
-				 * number so that the beginning of the array (highest
-				 * ID'd rules) are all 1's 
-				 * >>OR<< 
-				 * just set all the appropriate
-				 * bits in j to 1's */
+            if(rule_matches(byte_width, num_temp, pol.q_masks[j.num - 1], pol.b_masks[j.num - 1])) {
+    			Trace("Input %"PRIu64" (", i.num);
+//    			for(uint64_t k = pol.B; k != 0; k--) {
+//    					printbits(i.arr[k-1]);
+//    					Trace(" ");
+//    			}
+    			Trace(") matches rule %"PRIu64"\n", j.num);
 
 				BitTrue(tab_entry.arr, j.num - 1);
-//			}
+			}
 			/* A convenient property here is that if the loop to
 			 * match rules falls through without finding a match, it
 			 * automatically matches rule 0, since the memory for
 			 * the table was calloc'd  */
-
-			/* NOTE: the above should still hold since we have to check
-			 * each additional rule manually at least once -- if there is
-			 * no match to an "old" or new rule, the ID of 0 will be printed */
 		}
-//		Trace("Table entry %"PRIu64" is: ", i.num);
-//		for(uint64_t k = pol.B/8; k != 0; k--){
-//				printbits(tab_entry.arr[k-1]);
-//				Trace(" ");
-//		}
-//		Trace("\n");
-		memcpy(table[i.num], tab_entry.arr, width);\
+		memcpy(table[i.num], tab_entry.arr, width);
 	}
 	return (uint8_t*) table;
 }
 
-///* Classify packets with a single table */
-//void read_input_and_classify_single(policy pol, uint64_t width,
-//                                    uint8_t (*table)[width], uint32_t* id_tab)
-//{
-//        uint64_t packets_read = 0;
-//        union64 inpacket = {.num = 0}; /* Current input temp */
-//        union64 rule_matched = {.num = 0}; /* It is important this is zeroed as
-//                                            * we will be copying into its least
-//                                            * significant bytes only, relying on
-//                                            * the most significant bytes to
-//                                            * remain zero.*/
-//        while(fread(inpacket.arr, sizeof(uint8_t), pol.pl, stdin) == pol.pl){
-//                memcpy(rule_matched.arr, table[inpacket.num], width);
-//                Print("%"PRIu64"\n", rule_matched.num);
-//                packets_read++;
-//        }
-//        Trace("Packets read in: %"PRIu64"\n", packets_read);
-//}
-
-void read_input_and_classify_single(policy pol, uint64_t width,
-									uint8_t (*table)[width]) {
-
+void read_input_and_classify_single(policy pol, uint64_t width, uint8_t (*table)[width],
+									uint32_t* id_tab)
+{
 	uint64_t packets_read = 0;
 	union64 inpacket = {.num = 0}; /* Current input temp */
-	uint64_t tab_entry;
+
+	// Variable for delete processing
+	FILE *fp;
+	char *line = NULL;
+	char *token, *saveptr;
+	size_t len = 0;
+	ssize_t read;
+	uint64_t pack_num_watch = 0;
+	uint32_t rule_to_delete = 0;
+	int no_more_deletes = FALSE;
+
+	// Open deletes file pointer
+	fp = fopen("deletes.del", "r");
+	if (fp == NULL) {
+		Print("error: couldn't open delete file!\n");
+		exit(EXIT_FAILURE);
+	}
 
 	while(fread(inpacket.arr, sizeof(uint8_t), pol.pl, stdin) == pol.pl) {
-		bool match = false;
-		tab_entry = (uint64_t) table[inpacket.num];
-		for(uint64_t i = 0; i < pol.N; ++i){
-				if(BitValue(tab_entry, i) == true){
-						Trace("Packet %"PRIu64" ",packets_read);
-						Trace(" matched rule %"PRIu64"\n",i+1);
-						match = true;
-						break;
+		packets_read++;
+
+		// Process rule deletes
+		int read_next = TRUE;
+		do {
+			if(pack_num_watch == 0) {
+				if((read = getline(&line, &len, fp)) == -1) {
+					no_more_deletes = TRUE;
+					break;
 				}
+				token = strtok_r(line, "|", &saveptr);
+				pack_num_watch = atoi(token);
+				token = strtok_r(NULL, "|", &saveptr);
+				rule_to_delete = atoi(token);
+				saveptr = NULL;
+				token = NULL;
+
+				if(pack_num_watch == 0) {
+					// Something went wrong!
+					Print("error: pack_num_watch = 0!");
+					exit(EXIT_FAILURE);
+				}
+			}
+
+			if(pack_num_watch == packets_read) {
+				for(uint64_t p = 0; p < pol.n; p++) {
+					if(id_tab[p] == rule_to_delete) {
+						id_tab[p] = 0;
+						break;
+					}
+				}
+
+				// Reset so we can read in next loop
+				pack_num_watch = 0;
+			} else {
+				read_next = 0;
+			}
+		} while(read_next && !no_more_deletes);
+
+
+		union64 tab_entry = {.num = 0};
+		memcpy(tab_entry.arr, table[inpacket.num], width);
+
+		uint8_t bit_total[pol.N/8];
+		memset(bit_total, 0, pol.N/8);
+		memcpy(bit_total, tab_entry.arr, pol.N/8);
+
+		bool match = false;
+		for(uint64_t i = 0; i < pol.N; ++i) {
+			if(BitValue(bit_total, i) == true) {
+				/* Check the ID array to make sure the match is valid */
+				if(id_tab[i] == 0) {
+					Print("(%"PRIu64") Deleted rule found! (id_tab[%"PRIu64"])\n", packets_read, i);
+					continue;
+				}
+
+				Print("(%"PRIu64") matched: (id_tab[%"PRIu64"] = %"PRIu32")\n", packets_read, i, id_tab[i]);
+				//Print("%"PRIu64"\n",i+1);
+				//Trace("Packet %"PRIu64" ",packets_read);
+				//Trace(" matched rule %"PRIu64"\n",i+1);
+
+				Trace("tab array: ");
+				for(uint64_t k = pol.N/8; k != 0; k--) {
+					printbits(bit_total[k-1]);
+					Trace(" ");
+				}
+				Trace("\ninpacket: ");
+				for(uint64_t k = pol.N/8; k != 0; k--) {
+					printbits(bit_total[k-1]);
+					Trace(" ");
+				}
+				Trace("\n\n");
+
+				match = true;
+				break;
+			}
 		}
 		if (!match)
 				Print("0\n");
@@ -782,6 +807,7 @@ void read_input_and_classify(policy pol, table_dims dim,
 				for(uint64_t p = 0; p < pol.n; p++) {
 					if(id_tab[p] == rule_to_delete) {
 						id_tab[p] = 0;
+						DELETES = DELETES + 1;
 						break;
 					}
 				}
@@ -801,7 +827,7 @@ void read_input_and_classify(policy pol, table_dims dim,
 		memset(odd_index, 0, dim.odd_d * sizeof(union64));
 
 		/* Copy in sections of inpacket to even_index array*/
-		for (uint64_t i = 0; i < dim.even_d; ++i){
+		for (uint64_t i = 0; i < dim.even_d; ++i) {
 			copy_section(inpacket, even_index[i].arr,
 						 i*dim.even_s, dim.even_s);
 		}
@@ -809,7 +835,7 @@ void read_input_and_classify(policy pol, table_dims dim,
 		/* precompute bit offset of odd sections  */
 		uint64_t offset = dim.even_d * dim.even_s;
 		/* Copy in sections of inpacket to odd_index array*/
-		for (uint64_t i = 0; i < dim.odd_d; ++i){
+		for (uint64_t i = 0; i < dim.odd_d; ++i) {
 			copy_section(inpacket, odd_index[i].arr,
 						 offset + i*dim.odd_s, dim.odd_s);
 		}
@@ -826,14 +852,14 @@ void read_input_and_classify(policy pol, table_dims dim,
 
 		/* Loop through the remaining even bit arrays and AND them with
 		 * the total */
-		for(uint64_t i = 1; i < dim.even_d;++i){
+		for(uint64_t i = 1; i < dim.even_d;++i) {
 			and_bitarray(&even_tables[even_index[i].num][i][0],
 						 bit_total, pol.N/8);
 		}
 
 		 /* Loop through the remaining odd bit arrays and AND them with
 		 * the total */
-		for(uint64_t i = 0; i < dim.odd_d; ++i){
+		for(uint64_t i = 0; i < dim.odd_d; ++i) {
 			and_bitarray(&odd_tables[odd_index[i].num][i][0],
 						 bit_total, pol.N/8);
 		}
@@ -841,8 +867,8 @@ void read_input_and_classify(policy pol, table_dims dim,
 		/* Loop through and determine the first bit that is set, if none
 		 * is set, we say rule 0 is matched. */
 		bool match = false;
-		for(uint64_t i = 0; i < pol.N; ++i){
-			if(BitValue(bit_total,i) == true){
+		for(uint64_t i = 0; i < pol.N; ++i) {
+			if(BitValue(bit_total,i) == true) {
 
 				/* Check the ID array to make sure the match is valid */
 				if(id_tab[i] == 0) {
@@ -874,7 +900,7 @@ void read_input_and_classify(policy pol, table_dims dim,
 /* AND two bit arrays together, the second argument holds the results */
 static inline void and_bitarray(const uint8_t* new, uint8_t* total, uint64_t size)
 {
-        for (uint64_t i = 0; i < size; ++i){
+        for (uint64_t i = 0; i < size; ++i) {
                 total[i] &= new[i];
         }
 }

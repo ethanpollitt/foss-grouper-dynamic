@@ -26,7 +26,7 @@ FLLIBS = -lm -lpthread
 NAME = grouper
 CC = gcc
 
-all: clean release pol_gen rbtest
+all: clean debug release pol_gen rbtest
 
 debug: $(NAME).debug
 $(NAME).debug: grouper.c grouper.h xtrapbits.h printing.c printing.h

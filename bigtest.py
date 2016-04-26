@@ -23,6 +23,7 @@
 functions to help in building different kinds of tests"""
 
 from math import log
+from math import ceil
 from subprocess import Popen, PIPE, STDOUT, check_call
 from optparse import OptionParser
 from decimal import Decimal, getcontext
@@ -182,24 +183,25 @@ def min_tables(m, n, b):
     return high, table_mem(high,n,b)
 
 """
-ADDITION FOR FoSS
+########==== ADDITION FOR FoSS ====########
 
 Generates random rule deletions based on how many rules are in the original
 policy and how large the input size is.
 
 This method is added for rule delete support for Grouper
 """
-def build_delete_input(rules, inputsize = 100):
-	print "Creating deletes file with %d rules and %d inputsize" % (rules, inputsize)
+def build_delete_input(bits, rules, inputsize):
+	print "\tCreating deletes file with %d rules and %d inputsize" % (rules, inputsize)
 	random.seed(time.time())
 	filename = "deletes.del"
 	fout = open(filename, "w")
 	rules_deleted = []
 	next_inputsize = random.randint(2, 15)
 
-	real_input = inputsize * 1000
-	percent = real_input * .01
-	for i in range(1, real_input):
+	num_packets = int(ceil(inputsize * 1000 + ((inputsize * 1000) * .25)))
+	percent_packets = int(ceil(num_packets * .0005))
+        print "\tnum_packets: %d percent_packets: %d" % (num_packets, percent_packets)
+	for i in range(1, num_packets):
 		if len(rules_deleted) == rules:
 			break
 		if i == next_inputsize:
@@ -214,7 +216,7 @@ def build_delete_input(rules, inputsize = 100):
 			
 			rules_deleted.append(rule_num)
 			fout.write(str(i) + "|" + str(rule_num) + "\n")
-			next_inputsize = next_inputsize + random.randint(1, percent)
+			next_inputsize = next_inputsize + random.randint(1, percent_packets)
  
 def multi_d_test(mem_steps, rule_steps, bit_steps, 
                  programname = './grouper',
@@ -233,7 +235,7 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                   'kbps','pps','table build time', 'memory used',
                   'number of tables', 'policy read time', 'total run time',
                   'repeat run', 'command', 'cpu process time',
-                  'real process time']
+                  'real process time','number of deletes']
         dep_fields = len(fields) - 3 # number of dependent fields 
         writer.writerow(fields)
         # dict for memoizing results
@@ -296,7 +298,7 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                     print "\tBenchmarking '", runstring , "' ... "
                     timings = {}
                     if not dryrun:
-			build_delete_input(rules, data_size)
+			build_delete_input(bits, rules, data_size)
                         runbench = Popen(runstring , stderr = STDOUT, stdout = PIPE,
                                          shell=True)
                         timings = eval(runbench.communicate()[0]) #expecting a dict
@@ -326,10 +328,7 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                     num_packets = data_size * 1000
                     pps = Decimal(num_packets) / cpu_process_secs
                     Kbps = Decimal(1500 * 8 * num_packets) / cpu_process_secs
-		    if "deletions" in timings:
-			    deletions = timings["deletions"]
-		    else:
-			    deletions = 0
+		    deletions = timings["deletes"]
                     
                     # append current run info to the benchmark file
                     writer.writerow([mem, rules, bits, q1(Kbps),

@@ -138,7 +138,7 @@ uint8_t * create_single_table(policy pol,uint64_t width);
 
 /* Classify packets with a single table */
 void read_input_and_classify_single(policy pol, uint64_t width,
-                                    uint8_t (*table)[width]);
+                                    uint8_t (*table)[width], uint32_t* id_tab);
 
 /* Filters incoming packets and classifies them to stdout */
 void read_input_and_classify(policy pol, table_dims dim, 
