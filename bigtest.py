@@ -31,6 +31,7 @@ import yaml
 import csv
 import time
 import random
+import time
 
 def GB(gb):
     """Defined to reduce errors in zeros"""
@@ -189,24 +190,31 @@ policy and how large the input size is.
 This method is added for rule delete support for Grouper
 """
 def build_delete_input(rules, inputsize = 100):
+	print "Creating deletes file with %d rules and %d inputsize" % (rules, inputsize)
+	random.seed(time.time())
 	filename = "deletes.del"
 	fout = open(filename, "w")
 	rules_deleted = []
-	next_inputsize = 0
-	for i in range(0, inputsize):
+	next_inputsize = random.randint(2, 15)
+
+	real_input = inputsize * 1000
+	percent = real_input * .01
+	for i in range(1, real_input):
+		if len(rules_deleted) == rules:
+			break
 		if i == next_inputsize:
 			# Do a random rule delete
 			rule_num = 0
-			rule_found = True
+			rule_found = False
 			while not rule_found:
-				rule_num = random.randint(0, rules)
+				rule_num = random.randint(1, rules)
 				if rule_num in rules_deleted:
 					continue
 				rule_found = True
 			
 			rules_deleted.append(rule_num)
-			fout.write(inputsize + "|" + rule_num)
-			next_inputsize = next_inputsize + random.randint(0, 10)
+			fout.write(str(i) + "|" + str(rule_num) + "\n")
+			next_inputsize = next_inputsize + random.randint(1, percent)
  
 def multi_d_test(mem_steps, rule_steps, bit_steps, 
                  programname = './grouper',
@@ -279,7 +287,7 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                                        res['pps'], res['build_time'], 
                                        memory_used, tables, res['pol_read'],
                                        res['total_time'], 'true', runstring,
-                                       res['cpu_process'], res['real_process']]
+                                       res['cpu_process'], res['real_process'], res['deletions']]
                         writer.writerow(write_array)
                         print "\tRun already completed, using cached values"
                         continue
@@ -288,7 +296,7 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                     print "\tBenchmarking '", runstring , "' ... "
                     timings = {}
                     if not dryrun:
-			build_delete_input(rules, inputsize)
+			build_delete_input(rules, data_size)
                         runbench = Popen(runstring , stderr = STDOUT, stdout = PIPE,
                                          shell=True)
                         timings = eval(runbench.communicate()[0]) #expecting a dict
@@ -335,7 +343,8 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                                          pol_read = q0001(read_secs),
                                          total_time = q0001(total_secs),
                                          cpu_process = q0001(cpu_process_secs),
-                                         real_process = q0001(real_process_secs))
+                                         real_process = q0001(real_process_secs), 
+					 deletions = deletions)
                 #clean up rule file
                 os.remove(rule_filename)
             #clean up data file
