@@ -199,8 +199,8 @@ def build_delete_input(bits, rules, inputsize):
 	next_inputsize = random.randint(2, 15)
 
 	num_packets = int(ceil(inputsize * 1000 + ((inputsize * 1000) * .25)))
-	percent_packets = int(ceil(num_packets * .0005))
-        print "\tnum_packets: %d percent_packets: %d" % (num_packets, percent_packets)
+	percent_add = int(ceil(num_packets * .00035))/(rules/1000)
+        print "\tnum_packets: %d percent_packets: %d" % (num_packets, percent_add)
 	for i in range(1, num_packets):
 		if len(rules_deleted) == rules:
 			break
@@ -216,7 +216,7 @@ def build_delete_input(bits, rules, inputsize):
 			
 			rules_deleted.append(rule_num)
 			fout.write(str(i) + "|" + str(rule_num) + "\n")
-			next_inputsize = next_inputsize + random.randint(1, percent_packets)
+			next_inputsize = next_inputsize + random.randint(1, percent_add)
  
 def multi_d_test(mem_steps, rule_steps, bit_steps, 
                  programname = './grouper',
@@ -262,6 +262,9 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                     rule_filename = make_rule_file(bits, rules)
                 print "Working with %s now..." % rule_filename
                 print "All-steps =",all_steps
+		
+                # Build deletes file for this amount of rules
+                build_delete_input(bits, rules, data_size)
                 for mem in mem_steps:
                     print "%d bytes:" % mem
                     if mem < min_bytes(rules, bits):
@@ -298,7 +301,6 @@ def multi_d_test(mem_steps, rule_steps, bit_steps,
                     print "\tBenchmarking '", runstring , "' ... "
                     timings = {}
                     if not dryrun:
-			build_delete_input(bits, rules, data_size)
                         runbench = Popen(runstring , stderr = STDOUT, stdout = PIPE,
                                          shell=True)
                         timings = eval(runbench.communicate()[0]) #expecting a dict

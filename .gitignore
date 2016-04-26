@@ -18,3 +18,5 @@ out
 *.o
 *.geany
 *.swp
+*.del
+
